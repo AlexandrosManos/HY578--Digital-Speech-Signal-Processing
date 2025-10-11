@@ -18,7 +18,6 @@ def lpc_as_toyou(sig, Fs):
         out = lpc_as(sig, Fs)
         sounddevice.play(out, Fs)
         sounddevice.play(sig, Fs)
-        sounddevice.play(np.concatenate((out, np.zeros(2000), sig[:-2000])), Fs) # create echo
     
     Yannis Stylianou (Python version by Alex Angelakis, 2025)
     CSD - CS 578
@@ -50,13 +49,16 @@ def lpc_as_toyou(sig, Fs):
         r = np.correlate(sigLPC, sigLPC, mode='full')  #autocorrelation
         r = r[len(sigLPC)-1:] # keep only the positive lags, future samples and not the past ones
         a = my_levinson(r, OrderLPC)    # LPC coefficients - this is YOUR function
-        G = np.sqrt(en / (np.sum(a ** 2))) # gain
-        ex = lfilter([1], a, sigLPC) # inverse filter - use lfilter
-
+        ex = lfilter(a, [1], sigLPC) # inverse filter - get excitation signal
+        
+        # Calculate gain from excitation energy
+        ex_energy = np.sum(ex ** 2)
+        G = np.sqrt(en / (ex_energy ))
+        
         # --- synthesis ---
         s = lfilter([G], a, ex)
         ens = np.sum(s ** 2)            # short-time energy of output
-        g = np.sqrt(en / (ens + 1e-12)) # normalization factor
+        g = np.sqrt(en / (ens)) # normalization factor
         s = s * g                       # energy compensation
         
         s[:Shift] = s[:Shift] + Buffer            # overlap-add
@@ -322,7 +324,7 @@ if __name__ == "__main__":
     print("LPC ANALYSIS TOOL")
     print("="*70)
     print("\nModes:")
-    print("  1. Audio Demo (listen to original, synthesized, and echo)")
+    print("  1. Audio Demo (listen to original and synthesized)")
     print("  2. Frame-by-Frame Analysis (compare LPC filter with FFT spectrum)")
     print("  3. Both")
     
@@ -346,15 +348,12 @@ if __name__ == "__main__":
         
         print("Processing LPC analysis-synthesis...")
         out = lpc_as_toyou(sig, Fs)
-        
-        # Create echo signal
-        echo_sig = np.concatenate((out, np.zeros(2000), sig[:-2000]))
 
         # Enable interactive mode for matplotlib
         plt.ion()
         
-        # Create figure with all signals
-        fig, axes = plt.subplots(3, 1, figsize=(12, 8))
+        # Create figure with both signals
+        fig, axes = plt.subplots(2, 1, figsize=(12, 6))
         
         # Plot 1: Original Signal
         time_sig = np.arange(len(sig)) / Fs
@@ -372,14 +371,6 @@ if __name__ == "__main__":
         axes[1].set_ylabel('Amplitude')
         axes[1].grid(True, alpha=0.3)
         
-        # Plot 3: Echo Effect (Synthesized + Original)
-        time_echo = np.arange(len(echo_sig)) / Fs
-        axes[2].plot(time_echo, echo_sig, color='green')
-        axes[2].set_title('Echo Effect (Synthesized + Silence + Original)', fontsize=12, fontweight='bold')
-        axes[2].set_xlabel('Time (s)')
-        axes[2].set_ylabel('Amplitude')
-        axes[2].grid(True, alpha=0.3)
-        
         plt.tight_layout()
         plt.draw()  # Draw the figure
         plt.pause(1)  # Give more time for window to fully render
@@ -389,12 +380,8 @@ if __name__ == "__main__":
         sd.play(sig, Fs)
         sd.wait()
         
-        print("2. Playing LPC SYNTHESIZED signal (middle plot)...")
+        print("2. Playing LPC SYNTHESIZED signal (bottom plot)...")
         sd.play(out, Fs)
-        sd.wait()
-        
-        print("3. Playing ECHO effect (bottom plot)...")
-        sd.play(echo_sig, Fs)
         sd.wait()
         
         print("\nPlayback complete!")

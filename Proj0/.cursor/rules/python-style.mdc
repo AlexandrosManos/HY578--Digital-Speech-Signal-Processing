@@ -1,0 +1,44 @@
+---
+globs: *.py
+---
+
+# Python Coding Standards for HY578 Labs
+
+## Code Style
+
+- Use **Python 3.10+** features where appropriate
+- Follow **PEP 8** style guidelines
+- Use **type hints** for function signatures
+- Prefer **dataclasses** for configuration objects
+- Use **numpy** for numerical operations (avoid Python loops)
+- **Keep it simple**: This is an educational project - prioritize clarity over sophistication
+- **Follow the lab manual**: Implement algorithms as described in [Project0_part1.txt](mdc:Project0_part1.txt)
+
+## Documentation
+
+- Include comprehensive **docstrings** for all functions and classes
+- Use **Google-style** or **NumPy-style** docstrings
+- Document parameters, return values, and exceptions
+- Add inline comments for complex algorithms
+
+## Signal Processing Conventions
+
+- Use **float32** for audio signals (memory efficiency)
+- Normalize audio to [-1, 1] range
+- Remove DC component (mean subtraction)
+- Use **zero-based indexing** for frames
+- Store frame centers as **float64** for interpolation accuracy
+
+## Error Handling
+
+- Validate input parameters (frame length, step size > 0)
+- Check for empty or too-short signals
+- Provide meaningful error messages
+- Use assertions for internal invariants
+
+## Performance
+
+- Vectorize operations with NumPy (avoid explicit loops)
+- Pre-allocate arrays when size is known
+- Use appropriate dtypes (float32 vs float64)
+- Profile before optimizing

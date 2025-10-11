@@ -1,0 +1,86 @@
+---
+alwaysApply: true
+---
+
+# Library and Code Constraints
+
+## Allowed Libraries
+
+Use **ONLY** these libraries for the project:
+
+- **numpy** - For numerical operations and array processing
+- **pandas** - For data manipulation and analysis (if needed)
+- **matplotlib.pyplot** (as plt) - For plotting and visualization
+- **wave** - For WAV file I/O (standard library)
+- **argparse** - For command-line arguments (standard library)
+- **logging** - For logging (standard library)
+- **dataclasses** - For configuration objects (standard library)
+- **pathlib** - For file path handling (standard library)
+- **contextlib** - For context managers (standard library)
+
+## Additional Allowed Libraries
+
+These libraries are also permitted:
+
+- **scipy** (including scipy.signal, scipy.io.wavfile) - For advanced signal processing
+- **librosa** - For audio analysis
+- **pydub** - For audio file manipulation
+- **soundfile** - For audio I/O
+- **audioread** - For reading audio files
+- **torchaudio** - For audio processing with PyTorch
+- **tensorflow/keras** - For machine learning approaches
+- **pytorch** - For deep learning approaches
+
+## General Principle
+
+Use any library that helps accomplish the task efficiently. Prefer simpler solutions when appropriate, but don't hesitate to use specialized audio/signal processing libraries when they provide better functionality.
+
+## Code Style Requirements
+
+### Follow the Lab Manual Approach
+
+- **Reference**: Always consult [Project0_part1.txt](mdc:Project0_part1.txt) for algorithm details
+- **MATLAB equivalents**: The project is based on MATLAB code - translate concepts directly
+- **Simplicity**: Keep implementations simple and educational, not production-grade
+- **Transparency**: Use explicit formulas matching the lab manual
+
+### Implementation Patterns
+
+1. **Manual signal processing** - Implement features from scratch using NumPy
+   ```python
+   # Energy calculation (from lab manual)
+   energy = (1/N) * np.sum(frame**2)
+   
+   # Zero-crossings (from lab manual)
+   zcr = 0.5 * np.sum(np.abs(np.sign(frame[1:]) - np.sign(frame[:-1])))
+   ```
+
+2. **Simple windowing** - Use NumPy's built-in windows
+   ```python
+   window = np.hamming(frame_length)  # Not scipy.signal.hamming
+   ```
+
+3. **Basic WAV loading** - Use standard library `wave` module
+   ```python
+   import wave
+   with wave.open(filepath, 'rb') as wav:
+       # Read frames manually
+   ```
+
+4. **Matplotlib for plotting** - Simple, clear visualizations
+   ```python
+   import matplotlib.pyplot as plt
+   plt.plot(time, signal)
+   plt.xlabel('Time (s)')
+   plt.ylabel('Amplitude')
+   ```
+
+## Rationale
+
+This project is **educational** - the goal is to:
+- Understand signal processing fundamentals
+- Implement algorithms from first principles
+- Follow the lab manual's MATLAB-style approach
+- Keep dependencies minimal and transparent
+
+**Avoid over-engineering** with advanced libraries that hide the underlying algorithms.

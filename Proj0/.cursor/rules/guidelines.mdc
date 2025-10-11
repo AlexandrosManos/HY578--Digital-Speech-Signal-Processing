@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+
+# General Guidelines
+
+- Maintain clean, well-documented code following the project's established patterns
+- Refer to [Proj0.py](mdc:Proj0.py) for implementation details and coding style
+- See [project-overview.mdc](mdc:.cursor/rules/project-overview.mdc) for project structure and algorithm overview
+- Follow speech processing conventions in [speech-processing.mdc](mdc:.cursor/rules/speech-processing.mdc)
+- **IMPORTANT**: Use only approved libraries - see [library-constraints.mdc](mdc:.cursor/rules/library-constraints.mdc)
+- **ALWAYS** reference the lab manual [Project0_part1.txt](mdc:Project0_part1.txt) for algorithm implementation details

@@ -1,0 +1,79 @@
+---
+alwaysApply: true
+description: LPC Project with Levinson Recursion Algorithm
+---
+
+# LPC Project - Levinson Recursion Implementation
+
+## Project Structure
+- **Tutorial**: [HY578 Project LPC.pdf](mdc:HY578 Project LPC.pdf) - Contains the theoretical background and instructions
+- **Main File**: [Proj1_csd5111.py](mdc:Proj1_csd5111.py) - Main implementation file with LPC analysis-synthesis
+- **Audio Sample**: [Speech Sample.wav](mdc:Speech Sample.wav) - Test audio file
+
+## Levinson Recursion Algorithm
+
+The `my_levinson` function implements the Levinson Recursion algorithm to compute LPC coefficients from autocorrelation values.
+
+### Algorithm Steps:
+
+**Initial step:**
+- l₀⁰ = 0
+- E⁰ = r[0]
+
+**Step 1:** Compute the partial correlation coefficients
+```
+kᵢ = (r[i] - Σⱼ₌₁ⁱ⁻¹ lⱼⁱ⁻¹ r[i-j]) / Eⁱ⁻¹
+```
+
+**Step 2:** Update prediction coefficients, l
+```
+lᵢⁱ = kᵢ
+lⱼⁱ = lⱼⁱ⁻¹ - kᵢ lᵢ₋ⱼⁱ⁻¹,  for 1 ≤ j ≤ i-1
+```
+
+**Step 3:** Update the minimum squared prediction error
+```
+Eⁱ = (1 - kᵢ²) Eⁱ⁻¹
+```
+
+**Step 4:** Repeat steps 1 to 3 for i = 1, 2, ..., p
+
+**Final Step:** At pth step, compute the optimal predictor coefficients, lⱼ*
+```
+lⱼ* = lⱼᵖ,  for 1 ≤ j ≤ p
+```
+
+### Function Signature:
+```python
+def my_levinson(r, order):
+    """
+    Levinson-Durbin recursion for computing LPC coefficients.
+    
+    INPUT:
+        r: autocorrelation sequence (numpy array), length >= order+1
+           r[0] is the zero-lag autocorrelation
+        order: order of the LPC filter (integer)
+    
+    OUTPUT:
+        a: LPC coefficients (numpy array of length order+1)
+           a[0] = 1.0 (by convention for the all-pole filter)
+           a[1:] are the predictor coefficients
+    """
+```
+
+### Implementation Notes:
+1. Initialize E⁰ = r[0] (the zero-lag autocorrelation = energy)
+2. Initialize coefficient array to store the predictor coefficients
+3. Use the recursion formulas above to iteratively compute coefficients
+4. At each iteration i (from 1 to p), update:
+   - The reflection coefficient kᵢ
+   - The predictor coefficients lⱼⁱ
+   - The prediction error Eⁱ
+5. Return the final coefficients as [1, -l₁*, -l₂*, ..., -lₚ*]
+   - Note: The negative sign is used for the IIR filter representation H(z) = 1/A(z)
+
+### Usage in LPC Analysis:
+The function is called in line 52 of [Proj1_csd5111.py](mdc:Proj1_csd5111.py):
+```python
+a = my_levinson(r, OrderLPC)  # r is autocorrelation, OrderLPC is typically 24
+```

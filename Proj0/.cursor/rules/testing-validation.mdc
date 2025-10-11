@@ -1,0 +1,67 @@
+---
+description: Testing and validation guidelines for the VUS discriminator
+---
+
+# Testing and Validation Guidelines
+
+## Test Data
+
+### Provided Corpus
+- **H.22.16k.wav** - Primary test file: "The fish twisted and turned on the bent hook"
+- **-sin.wav variants** - Lombard speech (stressed, noisy environment)
+- **-swn.wav variants** - Normal speech (quiet environment)
+
+### Student Recordings
+- Record at **16 kHz sampling rate**
+- Use clear speech in quiet environment
+- Include voiced, unvoiced, and silence segments
+- Test with various speakers and speaking styles
+
+## Validation Criteria
+
+### Visual Inspection
+- Plot VUS decisions overlaid on waveform
+- Verify voiced segments (vowels) are correctly labeled
+- Check unvoiced segments (fricatives, plosives)
+- Confirm silence detection at start/end
+
+### Expected Performance
+- **Voiced detection**: Should be highly accurate (>90%)
+- **Unvoiced detection**: Moderate accuracy (60-80%)
+- **Silence detection**: Good accuracy (>85%)
+- **Transient frames**: Expected to have errors
+
+## Parameter Experiments
+
+### Frame Rate Variations
+- **Increase to 20-30 ms**: Smoother decisions, less time resolution
+- **Decrease to 2.5-5 ms**: More temporal detail, noisier decisions
+
+### Window Size Variations
+- **Shorter windows**: Better time localization, less statistical reliability
+- **Longer windows**: Better statistics, worse time localization
+
+### Window Type Comparison
+- **Hamming**: Reduces spectral leakage (preferred)
+- **Rectangular**: Simpler but more artifacts
+
+### Interpolation Methods
+- **Linear**: Fast, simple, adequate for most cases
+- **Cubic**: Smoother transitions
+- **Spline**: Smoothest but may overshoot
+
+## Reporting Requirements
+
+1. **Code submission**: Complete implementation with all parameters
+2. **Figures**: VUS results for all provided waveforms
+3. **Analysis**: Comment on algorithm performance and failure cases
+4. **Experiments**: Document effects of parameter changes
+5. **Personal recording**: Include figure with your voice sample
+
+## Common Issues to Check
+
+- **Energy normalization**: Ensure consistent scaling
+- **DC removal**: Verify mean is removed
+- **Frame boundaries**: Check padding and edge cases
+- **Threshold sensitivity**: Test with different speakers
+- **Interpolation artifacts**: Look for unrealistic transitions

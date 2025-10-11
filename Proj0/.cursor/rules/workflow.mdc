@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Development Workflow
+
+## Making Changes
+
+1. **Understand the algorithm**: Review [Project0_part1.txt](mdc:Project0_part1.txt) for theoretical background
+2. **Check existing implementation**: See [Proj0.py](mdc:Proj0.py) for current code structure
+3. **Test changes**: Run with [H.22.16k.wav](mdc:H.22.16k.wav) to verify results
+4. **Document**: Update docstrings and comments
+
+## Running the Code
+
+```bash
+# Basic usage
+python Proj0.py --input H.22.16k.wav
+
+# With custom parameters
+python Proj0.py --input H.22.16k.wav --frame-duration 25.0 --frame-shift 5.0
+
+# Enable debug logging
+python Proj0.py --input H.22.16k.wav --log-level DEBUG
+```
+
+## Code Organization
+
+- **Configuration**: Use `AnalysisConfig` dataclass for parameters
+- **Signal processing**: Keep functions pure and testable
+- **Feature extraction**: Vectorize with NumPy (no loops)
+- **Classification**: Separate logic from feature computation

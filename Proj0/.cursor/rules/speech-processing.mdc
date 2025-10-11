@@ -1,0 +1,84 @@
+---
+description: Guidelines for speech signal processing and feature extraction
+---
+
+# Speech Processing Guidelines
+
+## Audio Loading
+
+- **Expected format**: WAV files, 16 kHz, mono
+- **Preprocessing steps**:
+  1. Load waveform
+  2. Convert to mono (if stereo)
+  3. Normalize to [-1, 1]
+  4. Remove DC component (subtract mean)
+  5. Convert to float32
+
+## Frame-Based Analysis
+
+### Window Selection
+- **Hamming window** (preferred): Reduces spectral leakage
+- **Rectangular window**: For comparison only
+- Window length: 20-30 ms (300-500 samples @ 16 kHz)
+- Frame shift: 5-10 ms (80-160 samples @ 16 kHz)
+
+### Frame Extraction
+- Use **overlapping frames** (typically 50-75% overlap)
+- Apply window function **before** feature extraction
+- Pad signal if necessary to process all samples
+- Store **frame centers** for interpolation
+
+## Feature Extraction
+
+### Short-Time Energy (STE)
+```python
+energy = np.sum(windowed_frame ** 2) / frame_length
+```
+- Reflects amplitude variations
+- Higher for voiced speech
+- Lower for unvoiced/silence
+
+### Zero-Crossing Rate (ZCR)
+```python
+signs = np.sign(frame)
+zcr = 0.5 * np.sum(np.abs(np.diff(signs)))
+```
+- Indicates frequency content
+- Higher for unvoiced (high frequency)
+- Lower for voiced (low frequency)
+
+## Threshold Adaptation
+
+The algorithm uses **adaptive thresholds** based on signal statistics:
+
+- **Energy threshold**: `0.5 × mean(energy)`
+- **ZCR threshold**: `1.5 × mean(ZCR) - 0.3 × std(ZCR)`
+- **Silence threshold**: `0.25 × energy_threshold`
+
+These adapt to speaker characteristics and recording conditions.
+
+## Classification Rules
+
+```
+if energy <= silence_threshold:
+    label = SILENCE (0.0)
+elif energy > energy_threshold AND zcr <= zcr_threshold:
+    label = VOICED (1.0)
+else:
+    label = UNVOICED (0.5)
+```
+
+## Interpolation
+
+- Frame-level decisions → sample-level decisions
+- Use **linear interpolation** (default) or splines
+- Interpolate using frame centers as reference points
+- Handle boundary conditions (left/right extrapolation)
+
+## Known Limitations
+
+- **Transient frames** (voiced-to-unvoiced transitions) are challenging
+- **Fricatives, plosives, nasals** (/p/, /g/, /d/, /b/, /m/, /n/) may be misclassified
+- **Speaker variability** affects energy and ZCR distributions
+- **Background noise** can affect silence detection
+- Not suitable for **real-time** applications without modifications

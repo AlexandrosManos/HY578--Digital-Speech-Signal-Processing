@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+
+# HY578 Lab0: Speech Processing - VUS Discriminator
+
+This project implements a **Voiced/Unvoiced/Silence (VUS) discriminator** for speech signals using time-domain analysis.
+
+## Project Structure
+
+- [Proj0.py](mdc:Proj0.py) - Main implementation of the VUS discriminator
+- [H.22.16k.wav](mdc:H.22.16k.wav) - Sample speech waveform (16 kHz)
+- [Project0_part1.txt](mdc:Project0_part1.txt) - Lab assignment specification
+- [Project 0 Part 1.pdf](mdc:Project 0 Part 1.pdf) - Original lab manual
+
+## Core Algorithm
+
+The VUS discriminator uses two time-domain features:
+1. **Short-Time Energy (STE)** - distinguishes voiced (high energy) from unvoiced/silence (low energy)
+2. **Zero-Crossing Rate (ZCR)** - distinguishes voiced (low ZCR) from unvoiced (high ZCR)
+
+### Classification Logic
+- **Voiced**: High energy AND low ZCR
+- **Unvoiced**: Moderate energy AND high ZCR  
+- **Silence**: Very low energy (< 0.25 × energy_threshold)
+
+## Key Parameters
+
+- Frame duration: 30 ms (default)
+- Frame shift: 10 ms (default)
+- Window type: Hamming (default)
+- Sample rate: 16 kHz (expected)
+- Energy threshold: 0.5 × mean(energy)
+- ZCR threshold: 1.5 × mean(ZCR) - 0.3 × std(ZCR)
+
+## Usage
+
+```bash
+python Proj0.py --input H.22.16k.wav
+```

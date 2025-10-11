@@ -1,0 +1,78 @@
+---
+description: Planned extensions and future improvements for the VUS discriminator
+alwaysApply: false
+---
+
+# Future Extensions and TODOs
+
+## Immediate Enhancements (Lab Requirements)
+
+- [ ] Add **plotting functionality** for visualization
+  - Waveform with VUS overlay
+  - Energy and ZCR time series
+  - Threshold visualization
+  
+- [ ] Support **batch processing** of multiple files
+  - Process all corpus files automatically
+  - Generate comparison reports
+
+- [ ] Implement **report generation**
+  - Export figures to PDF/PNG
+  - Generate statistics tables
+  - Create LaTeX-ready output
+
+## Parameter Tuning
+
+- [ ] **Threshold sweep experiments**
+  - Grid search over energy/ZCR thresholds
+  - Optimize for different speakers
+  
+- [ ] **Window/step size optimization**
+  - Test 20ms, 25ms, 30ms windows
+  - Test 5ms, 10ms, 15ms shifts
+  
+- [ ] **Window function comparison**
+  - Add Hanning, Blackman windows
+  - Compare spectral leakage effects
+
+## Advanced Features
+
+- [ ] **Frequency-domain features**
+  - Add spectral centroid
+  - Add spectral flux
+  - Add MFCC features
+
+- [ ] **Machine learning integration**
+  - Train classifier on labeled data
+  - Use scikit-learn for classification
+  - Compare with rule-based approach
+
+- [ ] **Post-processing**
+  - Median filtering to remove isolated errors
+  - Minimum duration constraints
+  - State transition smoothing
+
+- [ ] **Real-time processing**
+  - Streaming audio input
+  - Online threshold adaptation
+  - Latency optimization
+
+## Evaluation Metrics
+
+- [ ] **Ground truth comparison**
+  - Manual annotation tools
+  - Precision, recall, F1-score
+  - Confusion matrix
+
+- [ ] **Cross-corpus evaluation**
+  - Test on different languages
+  - Test on different recording conditions
+  - Robustness analysis
+
+## Code Quality
+
+- [ ] Add **unit tests** (pytest)
+- [ ] Add **integration tests**
+- [ ] Improve **logging** and debugging
+- [ ] Add **configuration file** support (YAML/JSON)
+- [ ] Create **command-line interface** with rich output

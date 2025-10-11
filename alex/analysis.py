@@ -6,11 +6,6 @@ from scipy.signal import freqz
 from scipy.io import wavfile
 from my_levinson import my_levinson
 
-
-def calculate_zcr(frame):
-    return np.sum(np.abs(np.diff(np.sign(frame)))) / (2 * len(frame))
-
-
 def freq_exp(sig, Fs, OrderLPC):
 
     Horizon = 30  # 30 ms
@@ -35,9 +30,8 @@ def freq_exp(sig, Fs, OrderLPC):
     freq[NFFT // 2 - 1] ≈ Fs / 2 - Fs / NFFT
     """""
 
-    has_plotted_voiced = False
-    has_plotted_unvoiced = False
-    comp = 0.15
+    voiced = False
+    unvoiced = False
 
     for l in range(Nfr):
         slice_end = slice_start + Horizon
@@ -50,12 +44,14 @@ def freq_exp(sig, Fs, OrderLPC):
         a = my_levinson(r, OrderLPC)
         G = np.sqrt(np.sum(a * r[:len(a)]))
 
-        zcr = calculate_zcr(sigLPC)
-        is_voiced = zcr < comp
+
+        energy = np.sum(sigLPC ** 2)
+        comp = 0.01  # Adjust based on your signal
+        is_voiced = energy > comp
 
         # Voiced frame example sounds with clear pitch and harmonic structure
         # if l == 166: pre-determined frame numbers
-        if is_voiced and not has_plotted_voiced:
+        if is_voiced and not voiced:
             has_plotted_voiced = True
             # Compute the frequency response of the LPC filter
             w, h = freqz(G, a, worN=SFFT, whole=True)
@@ -73,7 +69,7 @@ def freq_exp(sig, Fs, OrderLPC):
 
         # Unvoiced frame example sounds like "s", "sh", "f" with noise-like characteristics
         # if l == 0: pre-determined frame numbers
-        if not is_voiced and not has_plotted_unvoiced:
+        if not is_voiced and not unvoiced:
             has_plotted_unvoiced = True
             w, h = freqz(G, a, worN=SFFT, whole=True)
             X = np.fft.fft(sigLPC, SFFT)
@@ -87,7 +83,6 @@ def freq_exp(sig, Fs, OrderLPC):
             plt.ylabel('Amplitude (dB)')
             plt.legend(['Magnitude of LP filter', 'Magnitude of FFT of frame'])
             plt.show()
-
         slice_start += Shift
 
 if __name__ == "__main__":

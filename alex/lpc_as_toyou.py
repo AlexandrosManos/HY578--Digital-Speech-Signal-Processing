@@ -73,7 +73,7 @@ def lpc_as_toyou(sig, Fs):
 
 if __name__ == "__main__":
     # Example usage
-    Fs, sig = wavfile.read('Lab1/speechsample.wav')
+    Fs, sig = wavfile.read('speechsample.wav')
     sig = sig / np.max(np.abs(sig))  # normalize the signal
 
     out = lpc_as_toyou(sig, Fs)

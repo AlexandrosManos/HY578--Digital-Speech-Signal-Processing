@@ -1,5 +1,18 @@
 import numpy as np
 def my_levinson(r, OrderLPC):
+    """
+    Lecture 4, Slide 33
+
+    INPUT:
+        r: autocorrelation sequence (numpy array), length >= order+1
+           r[0] is the zero-lag autocorrelation
+        order: order of the LPC filter (integer)
+    
+    OUTPUT:
+        aLPC: LPC coefficients (numpy array of length order+1)
+           aLPC[0] = 1.0 (by convention for the all-pole filter)
+           aLPC[1:] are the predictor coefficients
+    """
     # Step 1: k[i] = [ r[i] - np.sum(I[:i] * r[i:0:-1]) ] / E[i-1]
     # Step 2: I[i,i] = k[i], I[i,j] = I[i-1,j] - k[i] * I[i-1, i-j], 1 <= j <= i -1
     # Step 3: E[i] = (1 - k[i] ** 2) * E[i-1]

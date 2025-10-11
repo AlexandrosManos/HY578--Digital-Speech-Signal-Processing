@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.io import wavfile
 from scipy.signal import lfilter, freqz
+from my_levinson import my_levinson
 import sounddevice as sd
 import matplotlib.pyplot as plt
 import os
@@ -57,7 +58,7 @@ def lpc_as_toyou(sig, Fs):
         
         # --- synthesis ---
         s = lfilter([G], a, ex)
-        ens = np.sum(s ** 2)            # short-time energy of output
+        ens = np.sum(s ** 2) # short-time energy of output
         g = np.sqrt(en / (ens)) # normalization factor
         s = s * g                       # energy compensation
         
@@ -70,57 +71,57 @@ def lpc_as_toyou(sig, Fs):
 
     return out
 
-def my_levinson(r, order):
-    """
-    Lecture 4, Slide 33
+# def my_levinson(r, order):
+#     """
+#     Lecture 4, Slide 33
 
-    INPUT:
-        r: autocorrelation sequence (numpy array), length >= order+1
-           r[0] is the zero-lag autocorrelation
-        order: order of the LPC filter (integer)
+#     INPUT:
+#         r: autocorrelation sequence (numpy array), length >= order+1
+#            r[0] is the zero-lag autocorrelation
+#         order: order of the LPC filter (integer)
     
-    OUTPUT:
-        a: LPC coefficients (numpy array of length order+1)
-           a[0] = 1.0 (by convention for the all-pole filter)
-           a[1:] are the predictor coefficients
-    """
-    # Initial step: l₀⁰ = 0, E⁰ = r[0]
-    # l[i, j] represents l_j^i (j-th coefficient at iteration i)
-    l = np.zeros((order + 1, order + 1))
+#     OUTPUT:
+#         a: LPC coefficients (numpy array of length order+1)
+#            a[0] = 1.0 (by convention for the all-pole filter)
+#            a[1:] are the predictor coefficients
+#     """
+#     # Initial step: l₀⁰ = 0, E⁰ = r[0]
+#     # l[i, j] represents l_j^i (j-th coefficient at iteration i)
+#     l = np.zeros((order + 1, order + 1))
     
-    # E[i] represents E^i (minimum squared prediction error at iteration i)
-    E = np.zeros(order + 1)
-    E[0] = r[0]
+#     # E[i] represents E^i (minimum squared prediction error at iteration i)
+#     E = np.zeros(order + 1)
+#     E[0] = r[0]
     
-    # Iterate through orders i = 1, 2, ..., p
-    for i in range(1, order + 1):
-        # Step 1: Compute the partial correlation coefficient (reflection coefficient)
-        # kᵢ = (r[i] - Σⱼ₌₁ⁱ⁻¹ lⱼⁱ⁻¹ r[i-j]) / Eⁱ⁻¹
-        numerator = r[i]
-        for j in range(1, i):
-            numerator -= l[i-1, j] * r[i - j]
-        k_i = numerator / E[i-1]
+#     # Iterate through orders i = 1, 2, ..., p
+#     for i in range(1, order + 1):
+#         # Step 1: Compute the partial correlation coefficient (reflection coefficient)
+#         # kᵢ = (r[i] - Σⱼ₌₁ⁱ⁻¹ lⱼⁱ⁻¹ r[i-j]) / Eⁱ⁻¹
+#         numerator = r[i]
+#         for j in range(1, i):
+#             numerator -= l[i-1, j] * r[i - j]
+#         k_i = numerator / E[i-1]
         
-        # Step 2: Update prediction coefficients
-        # lᵢⁱ = kᵢ
-        l[i, i] = k_i
+#         # Step 2: Update prediction coefficients
+#         # lᵢⁱ = kᵢ
+#         l[i, i] = k_i
         
-        # lⱼⁱ = lⱼⁱ⁻¹ - kᵢ lᵢ₋ⱼⁱ⁻¹, for 1 ≤ j ≤ i-1
-        for j in range(1, i):
-            l[i, j] = l[i-1, j] - k_i * l[i-1, i-j]
+#         # lⱼⁱ = lⱼⁱ⁻¹ - kᵢ lᵢ₋ⱼⁱ⁻¹, for 1 ≤ j ≤ i-1
+#         for j in range(1, i):
+#             l[i, j] = l[i-1, j] - k_i * l[i-1, i-j]
         
-        # Step 3: Update the minimum squared prediction error
-        # Eⁱ = (1 - kᵢ²) Eⁱ⁻¹
-        E[i] = (1 - k_i**2) * E[i-1]
+#         # Step 3: Update the minimum squared prediction error
+#         # Eⁱ = (1 - kᵢ²) Eⁱ⁻¹
+#         E[i] = (1 - k_i**2) * E[i-1]
     
-    # Final Step: Return optimal predictor coefficients as [1, -l₁*, -l₂*, ..., -lₚ*]
-    # The negative sign is for the IIR filter representation H(z) = 1/A(z)
-    # lⱼ* = lⱼᵖ for 1 ≤ j ≤ p
-    a = np.zeros(order + 1)
-    a[0] = 1.0
-    a[1:] = -l[order, 1:order + 1]
+#     # Final Step: Return optimal predictor coefficients as [1, -l₁*, -l₂*, ..., -lₚ*]
+#     # The negative sign is for the IIR filter representation H(z) = 1/A(z)
+#     # lⱼ* = lⱼᵖ for 1 ≤ j ≤ p
+#     a = np.zeros(order + 1)
+#     a[0] = 1.0
+#     a[1:] = -l[order, 1:order + 1]
     
-    return a
+#     return a
 
 def analyze_lpc_frame(sigLPC, a, Fs, frame_num, order, frame_type="unknown", save_plot=True):
     """

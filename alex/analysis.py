@@ -19,7 +19,7 @@ def freq_exp(sig, Fs, OrderLPC):
     Nfr = int(np.floor((Lsig - Horizon) / Shift) + 1)
 
     # Fast Fourier Transform
-    SFFT = 1024 # 1024, 2048, 4096
+    SFFT = 2048 # 1024, 2048, 4096
     freq = np.arange(0, Fs/2, Fs/SFFT)
 
     """""
@@ -89,5 +89,5 @@ if __name__ == "__main__":
     Fs, sig = wavfile.read('speechsample.wav')
     # Fs = 16000, we should use OrderLPC = 16 - 24
     sig = sig / np.max(np.abs(sig))
-    OrderLPC = 68
+    OrderLPC = 32
     freq_exp(sig, Fs, OrderLPC)

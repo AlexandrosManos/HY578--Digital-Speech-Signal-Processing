@@ -47,17 +47,18 @@ def lpc_as_toyou(sig, Fs):
         en = np.sum(sigLPC ** 2)  # get the short-term energy of the input
 
         # --- LPC analysis ---
-        r = np.correlate(sigLPC, sigLPC, mode='full')  #autocorrelation
-        r = r[len(sigLPC)-1:] # keep only the positive lags, future samples and not the past ones
-        a = my_levinson(r, OrderLPC)    # LPC coefficients - this is YOUR function
-        ex = lfilter(a, [1], sigLPC) # inverse filter - get excitation signal
+        r = np.correlate(sigLPC, sigLPC, mode='full')  # autocorrelation
+        r = r[len(sigLPC)-1:]  # keep only the positive lags
+        a = my_levinson(r, OrderLPC)  # LPC coefficients
         
-        # Calculate gain from excitation energy
-        ex_energy = np.sum(ex ** 2)
-        G = np.sqrt(en / (ex_energy ))
+        # Calculate LPC gain (prediction error energy)
+        G = np.sqrt(np.sum(a * r[:len(a)]))
+        
+        # Get excitation signal (residual)
+        ex = lfilter(a, [1], sigLPC)  # inverse filter A(z)
         
         # --- synthesis ---
-        s = lfilter([G], a, ex)
+        s = lfilter([G], a, ex)  # H(z) = G/A(z) applied to excitation
         ens = np.sum(s ** 2) # short-time energy of output
         g = np.sqrt(en / (ens)) # normalization factor
         s = s * g                       # energy compensation
@@ -123,202 +124,124 @@ def lpc_as_toyou(sig, Fs):
     
 #     return a
 
-def analyze_lpc_frame(sigLPC, a, Fs, frame_num, order, frame_type="unknown", save_plot=True):
-    """
-    Analyze and compare LPC filter frequency response with FFT of speech frame.
+def analyze_frame(sig_frame, Fs, order, frame_num, frame_type):
+    """Compare LPC filter response with FFT of the given frame."""
+    NFFT = 2048
     
-    INPUT:
-        sigLPC: windowed speech frame
-        a: LPC coefficients
-        Fs: sampling frequency
-        frame_num: frame number for labeling
-        order: LPC order used
-        frame_type: "voiced", "unvoiced", or "unknown"
-        save_plot: whether to save the plot
-    """
-    # Compute FFT of speech frame
-    fft_frame = np.fft.fft(sigLPC, n=2048)
-    fft_freq = np.fft.fftfreq(2048, 1/Fs)
-    fft_mag = np.abs(fft_frame)
+    # LPC Analysis
+    r = np.correlate(sig_frame, sig_frame, mode='full')
+    r = r[len(sig_frame)-1:]  # keep positive lags
     
-    # Compute frequency response of LPC filter H(z) = 1/A(z)
-    w, h = freqz([1], a, worN=2048, fs=Fs)
-    lpc_mag = np.abs(h)
-    
-    # Create comparison plot
-    fig, axes = plt.subplots(2, 1, figsize=(12, 8))
-    
-    # Plot 1: Magnitude spectrum comparison (linear scale)
-    axes[0].plot(fft_freq[:1024], fft_mag[:1024], 'b-', alpha=0.7, linewidth=1, label='FFT of Speech Frame')
-    axes[0].plot(w[:1024], lpc_mag[:1024], 'r-', linewidth=2, label=f'LPC Filter Response (order={order})')
-    axes[0].set_xlabel('Frequency (Hz)', fontsize=11)
-    axes[0].set_ylabel('Magnitude', fontsize=11)
-    axes[0].set_title(f'Frame {frame_num} - {frame_type.upper()} - Magnitude Spectrum Comparison', 
-                      fontsize=13, fontweight='bold')
-    axes[0].grid(True, alpha=0.3)
-    axes[0].legend(loc='upper right', fontsize=10)
-    axes[0].set_xlim([0, Fs/2])
-    
-    # Plot 2: Magnitude spectrum in dB (log scale)
-    fft_mag_db = 20 * np.log10(fft_mag[:1024] + 1e-10)
-    lpc_mag_db = 20 * np.log10(lpc_mag[:1024] + 1e-10)
-    axes[1].plot(fft_freq[:1024], fft_mag_db, 'b-', alpha=0.7, linewidth=1, label='FFT of Speech Frame')
-    axes[1].plot(w[:1024], lpc_mag_db, 'r-', linewidth=2, label=f'LPC Filter Response (order={order})')
-    axes[1].set_xlabel('Frequency (Hz)', fontsize=11)
-    axes[1].set_ylabel('Magnitude (dB)', fontsize=11)
-    axes[1].set_title(f'Frame {frame_num} - {frame_type.upper()} - Magnitude Spectrum (dB)', 
-                      fontsize=13, fontweight='bold')
-    axes[1].grid(True, alpha=0.3)
-    axes[1].legend(loc='upper right', fontsize=10)
-    axes[1].set_xlim([0, Fs/2])
-    axes[1].set_ylim([np.max(fft_mag_db) - 60, np.max(fft_mag_db) + 5])
-    
+    a = my_levinson(r, order)  # LPC coefficients
+    G = np.sqrt(np.sum(a * r[:len(a)]))  # LPC gain (prediction error energy)
+
+    # LPC frequency response: H(z) = G / A(z)
+    w, h = freqz([G], a, worN=NFFT//2, fs=Fs)
+    lpc_db = 20 * np.log10(np.abs(h) + 1e-10)
+
+    # FFT of the frame
+    X = np.fft.fft(sig_frame, NFFT)
+    X_db = 20 * np.log10(np.abs(X[:NFFT//2]) + 1e-10)
+    freqs = np.linspace(0, Fs/2, NFFT//2)
+
+    # Plot
+    plt.figure(figsize=(12, 6))
+    plt.plot(freqs, X_db, 'b-', alpha=0.5, linewidth=1.5, label='FFT of Speech Frame')
+    plt.plot(w, lpc_db, 'r-', linewidth=2.5, label=f'LPC Filter Response (order={order})')
+    plt.title(f'{frame_type.capitalize()} Frame {frame_num} - LPC Order {order}', 
+              fontsize=14, fontweight='bold')
+    plt.xlabel('Frequency (Hz)', fontsize=12)
+    plt.ylabel('Magnitude (dB)', fontsize=12)
+    plt.xlim([0, Fs/2])
+    plt.grid(True, linestyle=':', alpha=0.7)
+    plt.legend(loc='upper right', fontsize=11)
     plt.tight_layout()
-    
-    if save_plot:
-        # Create plots directory if it doesn't exist
-        os.makedirs('lpc_analysis_plots', exist_ok=True)
-        filename = f'lpc_analysis_plots/frame_{frame_num:04d}_{frame_type}_order_{order}.png'
-        plt.savefig(filename, dpi=150, bbox_inches='tight')
-        print(f"  Saved: {filename}")
-    
-    return fig
+
+    os.makedirs("plots", exist_ok=True)
+    filename = f"plots/frame{frame_num}_{frame_type}_order{order}.png"
+    plt.savefig(filename, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"    → Saved: {filename}")
+
 
 
     
 
-def frame_by_frame_analysis(sig, Fs, lpc_orders=[8, 16, 24, 32, 40]):
+def frame_by_frame_analysis(sig, Fs, lpc_orders=[8, 16, 24]):
     """
-    Perform detailed frame-by-frame LPC analysis with different orders.
-    Compare LPC filter response with FFT spectrum.
+    Frame-by-frame LPC analysis comparing FFT with LPC filter response.
+    Analyzes one voiced and one unvoiced frame with different LPC orders.
     """
-    print("\n" + "="*70)
+    print("="*70)
     print("FRAME-BY-FRAME LPC ANALYSIS")
     print("="*70)
     
-    Horizon = 30   # 30ms - window length
-    Horizon_samples = int(Horizon * Fs / 1000)
-    Shift = int(Horizon_samples / 2)
-    Win = np.hanning(Horizon_samples)
+    # Frame parameters
+    frame_len_ms = 30
+    frame_len = int(frame_len_ms * Fs / 1000)
+    shift = frame_len // 2
+    window = np.hanning(frame_len)
     
-    Lsig = len(sig)
-    slice_start = 0
-    Nfr = int(np.floor((Lsig - Horizon_samples) / Shift) + 1)
+    print(f"\nFrame length: {frame_len} samples ({frame_len_ms} ms)")
+    print(f"Frame shift: {shift} samples")
+    print(f"Sampling frequency: {Fs} Hz")
     
-    # Store frame energies and zero-crossing rates for classification
-    frame_energies = []
-    frame_zcr = []
-    frame_data = []
+    # Framing
+    frames = []
+    for start in range(0, len(sig) - frame_len, shift):
+        frame = sig[start:start + frame_len] * window
+        frames.append(frame)
     
-    print(f"\nAnalyzing {Nfr} frames...")
-    print(f"Frame length: {Horizon_samples} samples ({Horizon} ms)")
-    print(f"Frame shift: {Shift} samples ({Shift*1000/Fs:.1f} ms)")
+    print(f"Total frames: {len(frames)}")
     
-    # First pass: compute features for all frames
-    for l in range(Nfr):
-        slice_end = slice_start + Horizon_samples
-        sigLPC = Win * sig[slice_start:slice_end]
+    # Compute energy and zero-crossing for voiced/unvoiced classification
+    energies = [np.sum(f ** 2) for f in frames]
+    zcrs = [np.mean(np.abs(np.diff(np.sign(f)))) for f in frames]
+    
+    energy_th = np.percentile(energies, 60)
+    zcr_th = np.median(zcrs)
+    
+    # Pick one voiced and one unvoiced frame
+    voiced_idx = next(i for i, (e, z) in enumerate(zip(energies, zcrs)) if e > energy_th and z < zcr_th)
+    unvoiced_idx = next(i for i, (e, z) in enumerate(zip(energies, zcrs)) if e > 0.1 * energy_th and z > zcr_th)
+    
+    voiced_frame = frames[voiced_idx]
+    unvoiced_frame = frames[unvoiced_idx]
+    
+    print(f"\nSelected voiced frame: {voiced_idx}")
+    print(f"Selected unvoiced frame: {unvoiced_idx}")
+    
+    # Analyze with different LPC orders
+    print(f"\nTesting LPC orders: {lpc_orders}")
+    print(f"Will generate {len(lpc_orders) * 2} plots:")
+    for order in lpc_orders:
+        print(f"  - frame{voiced_idx}_voiced_order{order}.png")
+        print(f"  - frame{unvoiced_idx}_unvoiced_order{order}.png")
+    
+    print("\nGenerating plots...")
+    print("-" * 70)
+    
+    for order in lpc_orders:
+        print(f"  Processing: Voiced frame {voiced_idx} - Order {order}")
+        analyze_frame(voiced_frame, Fs, order, voiced_idx, 'voiced')
         
-        # Energy
-        energy = np.sum(sigLPC ** 2)
-        frame_energies.append(energy)
-        
-        # Zero-crossing rate (indicator of voicing)
-        zcr = np.sum(np.abs(np.diff(np.sign(sigLPC)))) / (2 * len(sigLPC))
-        frame_zcr.append(zcr)
-        
-        frame_data.append({
-            'frame_num': l,
-            'slice_start': slice_start,
-            'slice_end': slice_end,
-            'sigLPC': sigLPC,
-            'energy': energy,
-            'zcr': zcr
-        })
-        
-        slice_start += Shift
+        print(f"  Processing: Unvoiced frame {unvoiced_idx} - Order {order}")
+        analyze_frame(unvoiced_frame, Fs, order, unvoiced_idx, 'unvoiced')
     
-    frame_energies = np.array(frame_energies)
-    frame_zcr = np.array(frame_zcr)
-    
-    # Classify frames as voiced/unvoiced
-    # Voiced: high energy, low ZCR
-    # Unvoiced: lower energy, high ZCR
-    energy_threshold = np.median(frame_energies)
-    zcr_threshold = np.median(frame_zcr)
-    
-    voiced_frames = []
-    unvoiced_frames = []
-    
-    for i, frame in enumerate(frame_data):
-        if frame['energy'] > energy_threshold and frame['zcr'] < zcr_threshold:
-            frame['type'] = 'voiced'
-            voiced_frames.append(i)
-        elif frame['energy'] > energy_threshold * 0.3 and frame['zcr'] > zcr_threshold:
-            frame['type'] = 'unvoiced'
-            unvoiced_frames.append(i)
-        else:
-            frame['type'] = 'silence'
-    
-    print(f"\nFrame classification:")
-    print(f"  Voiced frames: {len(voiced_frames)}")
-    print(f"  Unvoiced frames: {len(unvoiced_frames)}")
-    print(f"  Silence/transition frames: {Nfr - len(voiced_frames) - len(unvoiced_frames)}")
-    
-    # Select interesting frames to analyze
-    selected_frames = []
-    
-    # Select 2-3 voiced frames from different parts
-    if len(voiced_frames) >= 3:
-        selected_frames.append((voiced_frames[len(voiced_frames)//4], 'voiced'))
-        selected_frames.append((voiced_frames[len(voiced_frames)//2], 'voiced'))
-        selected_frames.append((voiced_frames[3*len(voiced_frames)//4], 'voiced'))
-    elif len(voiced_frames) > 0:
-        selected_frames.append((voiced_frames[0], 'voiced'))
-    
-    # Select 2-3 unvoiced frames
-    if len(unvoiced_frames) >= 2:
-        selected_frames.append((unvoiced_frames[len(unvoiced_frames)//3], 'unvoiced'))
-        selected_frames.append((unvoiced_frames[2*len(unvoiced_frames)//3], 'unvoiced'))
-    elif len(unvoiced_frames) > 0:
-        selected_frames.append((unvoiced_frames[0], 'unvoiced'))
-    
-    print(f"\nSelected {len(selected_frames)} frames for detailed analysis:")
-    for frame_idx, frame_type in selected_frames:
-        print(f"  Frame {frame_idx}: {frame_type} (energy={frame_data[frame_idx]['energy']:.2f}, ZCR={frame_data[frame_idx]['zcr']:.3f})")
-    
-    # Analyze selected frames with different LPC orders
-    print(f"\nAnalyzing with LPC orders: {lpc_orders}")
-    print(f"\nGenerating comparison plots...")
-    
-    for frame_idx, frame_type in selected_frames:
-        frame = frame_data[frame_idx]
-        sigLPC = frame['sigLPC']
-        
-        # Compute autocorrelation
-        r = np.correlate(sigLPC, sigLPC, mode='full')
-        r = r[len(sigLPC)-1:]
-        
-        for order in lpc_orders:
-            print(f"\nFrame {frame_idx} ({frame_type}) - Order {order}:")
-            
-            # Compute LPC coefficients
-            a = my_levinson(r, order)
-            
-            # Create analysis plot
-            fig = analyze_lpc_frame(sigLPC, a, Fs, frame_idx, order, frame_type, save_plot=True)
-            plt.close(fig)
-    
-    print("\n" + "="*70)
-    print("ANALYSIS COMPLETE")
-    print(f"Plots saved in: ./lpc_analysis_plots/")
+    print("-" * 70)
+    print("="*70)
+    print("ANALYSIS COMPLETE - Check plots/ directory")
+    print("\nGenerated files:")
+    for order in lpc_orders:
+        print(f"  ✓ plots/frame{voiced_idx}_voiced_order{order}.png")
+        print(f"  ✓ plots/frame{unvoiced_idx}_unvoiced_order{order}.png")
     print("="*70)
 
 if __name__ == "__main__":
     import sys
     
     # Load audio file
-    Fs, sig = wavfile.read('Speech Sample.wav')
+    Fs, sig = wavfile.read('speechsample.wav')
     sig = sig / np.max(np.abs(sig))  # normalize the signal
     
     print("\n" + "="*70)
@@ -413,8 +336,10 @@ if __name__ == "__main__":
         
         if orders_input:
             lpc_orders = [int(x.strip()) for x in orders_input.split(',')]
+            print(f"Using LPC orders: {lpc_orders}")
         else:
             lpc_orders = [8, 16, 24, 32, 40]
+            print(f"Using default LPC orders: {lpc_orders}")
         
         # Run frame-by-frame analysis
         frame_by_frame_analysis(sig, Fs, lpc_orders)

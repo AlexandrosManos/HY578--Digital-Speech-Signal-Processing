@@ -8,7 +8,7 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import soundfile as sf
 def lpc_whisper(sig, Fs, save_path=None):
-    # np.random.seed(1)
+    np.random.seed(42)
 
     Horizon = 30  # 30 ms
     OrderLPC = 24  # order of LPC 12, 24, 48

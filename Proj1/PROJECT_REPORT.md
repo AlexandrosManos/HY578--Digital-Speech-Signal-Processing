@@ -157,8 +157,8 @@ Replaced natural excitation with **white Gaussian noise** while preserving LPC f
 #### Key Findings (Whisper)
 - Noise excitation successfully removes pitch
 - Formants preserved → speech remains intelligible
-- Source-filter validated: changing excitation alone transforms character
 - Order 24 optimal for naturalness
+- **Order differences:** Not easily perceived by ear, but clearly visible in spectrograms (higher orders show more formant detail)
 
 ---
 
@@ -219,7 +219,6 @@ Replaced natural excitation with **periodic impulse train** (constant pitch).
 #### Key Findings (Robot)
 - Constant periodic excitation creates robotic effect
 - Formants preserved → intelligibility maintained
-- Source-filter model validated: source controls quality, filter controls content
 - Pitch period controls robot "personality"
 
 ---
@@ -234,7 +233,6 @@ Both whisper and robotic voice demonstrate **source-filter separation:**
 | **Filter** | LPC (unchanged) | LPC (unchanged) |
 | **Effect** | No pitch, breathy | Constant pitch, mechanical |
 | **Formants** | Preserved | Preserved |
-| **Intelligibility** | Maintained | Maintained |
 
 **Common insight:** Changing only excitation transforms voice character while LPC filter preserves linguistic content and speaker characteristics.
 
@@ -325,35 +323,6 @@ All experiments validate **source-filter theory:**
 
 **Key principle:** Excitation and vocal tract operate independently.
 
-### LPC Order Guidelines
-
-| Order | Formants | Use Case | Notes |
-|-------|----------|----------|-------|
-| 8 | F1-F2 | Minimal | Insufficient for most tasks |
-| 12 | F1-F2 | Basic synthesis | Adequate for simple applications |
-| 16 | F1-F3 | Voiced speech | Good for telephony |
-| **24** | **F1-F5** | **General purpose** | **Optimal for 16 kHz** |
-| 32 | All + details | Unvoiced speech | Extra detail, some overfitting risk |
-| 40 | Over-fitted | Not recommended | Models harmonics, not just formants |
-
-**Rule:** Order ≈ Fs(kHz) + 4-6 poles → 16 + 8 = 24
-
-### Practical Applications
-
-1. **Speech coding:** LPC enables efficient compression (Q1)
-2. **Speech analysis:** LPC reveals formant structure (Q2)
-3. **Voice transformation:** Changing excitation creates effects (Q3)
-4. **Speaker characteristics:** Formant manipulation changes age/gender (Q4)
-
-### Technical Success
-
-✅ Levinson-Durbin correctly computes LPC coefficients  
-✅ LPC filter accurately models vocal tract resonances  
-✅ Excitation modifications transform voice quality  
-✅ Formant modifications shift perceived characteristics  
-✅ All transformations maintain intelligibility  
-✅ Source-filter separation validated experimentally  
-
 ---
 
 ## Files Generated
@@ -386,16 +355,3 @@ All experiments validate **source-filter theory:**
 
 ---
 
-## Summary
-
-This project successfully implements and validates Linear Predictive Coding (LPC) for speech analysis and synthesis:
-
-**Q1:** Levinson-Durbin recursion and LPC analysis-synthesis system work correctly, enabling speech reconstruction.
-
-**Q2:** LPC filter accurately models vocal tract as smooth spectral envelope capturing formant resonances, with order 24 optimal for 16 kHz.
-
-**Q3:** Whisper (noise excitation) and robotic voice (periodic excitation) demonstrate that excitation type controls voice quality while LPC filter preserves intelligibility.
-
-**Q4:** Formant modification through pole angle manipulation successfully shifts perceived speaker age by ±10-20% while maintaining naturalness.
-
-**Key achievement:** All implementations validate the source-filter model, showing excitation and vocal tract can be modified independently while maintaining speech intelligibility.

@@ -83,7 +83,7 @@ def lpc_formant_modification(sig, Fs, shift_percent):
 
 if __name__ == "__main__":
     # Example usage
-    Fs, sig = wavfile.read("speechsample.wav")
+    Fs, sig = wavfile.read("goofy.wav")
     sig = sig / np.max(np.abs(sig)) # normalize the signal
 
     os.makedirs("formant_output", exist_ok=True)

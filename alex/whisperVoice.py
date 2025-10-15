@@ -24,8 +24,6 @@ def lpc_whisper(sig, Fs, save_path=None):
     tosave_start = 0
     Nfr = int(np.floor((Lsig - Horizon) / Shift) + 1)
 
-    i = 0
-
     for l in range(Nfr):
         slice_end = slice_start + Horizon
         tosave_end = tosave_start + Shift

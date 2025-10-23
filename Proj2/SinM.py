@@ -108,9 +108,21 @@ def SinM_peakPicking(S, L) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     AMP = np.array([], dtype=float)
     PH = np.array([], dtype=float)
 
-    # #########################
-	#    INSERT CODE HERE    #
-	# #########################
+    mag = np.abs(S)
+    peaks = find_peaks(mag)
+    if len(peaks) == 0:
+        return F, AMP, PH
+
+    # Find the indices of the L largest-amplitude peaks.
+    # 1. mag[peaks] gives the amplitudes at the detected peak frequencies.
+    # 2. np.argsort sorts these amplitudes in ascending order.
+    # 3. [-L:] takes the indices of the L largest values (from the sorted list).
+    # 4. [::-1] reverses to descending order (largest to smallest).
+    idx = np.argsort(mag[peaks])[-L:][::-1]
+
+    F = peaks[idx]
+    AMP = mag[F]
+    PH = np.angle(S[F]) #unwrap maybe
 
     return F, AMP, PH
 
@@ -187,9 +199,22 @@ def SinM_synthesis_sin_PI(N, Fs, AMP_1, AMP_2, PH_1, PH_2, F_1, F_2):
 
     t = np.arange(N, dtype=float)
     for l in range(L):
-            # #########################
-			#    INSERT CODE HERE    #
-			# #########################
+        # Linear amplitude interpolation, Lecture 5  slide 36
+        a_t = AMP_1[l] + (AMP_2[l] - AMP_1[l]) * t / N
+        
+        # Cubic phase interpolation (McAulay-Quatieri)
+        # φ(t) = a + bt + ct² + dt³
+        # Boundary conditions: φ(0)=θ₁, φ(N)=θ₂, φ'(0)=ω₁, φ'(N)=ω₂
+        w1 = 2 * np.pi * F_1[l] / Fs
+        w2 = 2 * np.pi * F_2[l] / Fs
+        z = PH_1[l] # initial phase
+        c = w1
+        a = (3*(PH_2[l] - PH_1[l]) - N*(2*w1 + w2)) / (N**2)
+        b = (2*(PH_1[l] - PH_2[l]) + N*(w1 + w2)) / (N**3) 
+        phase_t = z + c*t + a*t**2 + b*t**3
+        
+        # Synthesize
+        Yf += a_t * np.cos(phase_t)
 			
     return Yf
 

@@ -55,7 +55,6 @@ if __name__ == "__main__":
     # Save output
     os.makedirs("whisper_output", exist_ok=True)
     wavfile.write("whisper_output/whisper.wav", Fs, (whisper * 32767).astype(np.int16))
-    print("Saved whisper.wav")
     
     # Plot comparison
     plt.figure(figsize=(10, 6))

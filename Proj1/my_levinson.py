@@ -36,12 +36,6 @@ def my_levinson(r, OrderLPC):
     # Step 1-4
     for i in range(1, OrderLPC):
 
-        # sum = 0
-        # for j in range(i):  # j from 0 to i-1
-        #     sum += I[i, j] * r[i - j]
-        # k[i] = (r[i + 1] - sum) / E[i - 1]
-
-        # divided = r[i+1] - np.sum(I[:i] * r[i:0:-1])
         divided = r[i+1] - np.sum(I[i, :i] * r[i:0:-1])
         k[i] = divided / E[i-1]
 
@@ -49,8 +43,6 @@ def my_levinson(r, OrderLPC):
 
         for j in range(i):
             I[i+1, j] = I[i, j] - k[i] * I[i, i - j - 1]
-
-        # I[i, :i] = I[i - 1, :i] - k[i] * I[i - 1, :i][::-1]
 
         E[i] = (1 - k[i]**2)*E[i-1]
 

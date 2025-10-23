@@ -51,7 +51,7 @@ def lpc_formant_modification(sig, Fs, shift_percent):
         a_new = np.real(np.poly(new_poles))
         a_new /= a_new[0]
         s = lfilter([G], a_new, ex)
-        s *= np.sqrt(en / (np.sum(s**2) + 1e-12))
+        s *= np.sqrt(en / (np.sum(s**2)))
         
         # Overlap-add
         s[:Shift] += Buffer
@@ -73,4 +73,3 @@ if __name__ == "__main__":
     for shift, name in shifts:
         modified = lpc_formant_modification(sig, Fs, shift)
         wavfile.write(f"formant_output/{name}.wav", Fs, (modified * 32767).astype(np.int16))
-        print(f"Saved {name}.wav (shift: {shift:+d}%)")

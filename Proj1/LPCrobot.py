@@ -40,7 +40,6 @@ def lpc_robot_voice(sig, Fs, lpc_order, pitch_period):
     Returns:
         synthesized robotic speech
     """
-    # Frame parameters
     frame_len = int(30 * Fs / 1000)  # 30ms window
     shift = frame_len // 2
     window = np.hanning(frame_len)
@@ -48,9 +47,7 @@ def lpc_robot_voice(sig, Fs, lpc_order, pitch_period):
     out = np.zeros_like(sig)
     buffer = 0
     
-    # Process frame by frame
     for i in range(0, len(sig) - frame_len, shift):
-        # Windowed frame
         frame = window * sig[i:i + frame_len]
         energy = np.sum(frame ** 2)
         
@@ -60,9 +57,6 @@ def lpc_robot_voice(sig, Fs, lpc_order, pitch_period):
         a = my_levinson(r, lpc_order)
         G = np.sqrt(np.sum(a * r[:len(a)]))
         
-        # --- MODIFIED: Use artificial periodic excitation instead of natural residual ---
-        # Original line 58: ex = lfilter(a, [1], frame)  # natural excitation
-        # New: Create periodic pulse train
         ex = create_periodic_excitation(frame_len, pitch_period)
         
         # Synthesis with artificial excitation
@@ -100,7 +94,6 @@ def create_spectrograms(original, robot_signals, Fs):
     plt.tight_layout()
     plt.savefig('robot_output/spectrogram_original_vs_robot.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print("  ✓ Saved: robot_output/spectrogram_original_vs_robot.png")
     
     # 2. LPC Order Comparison
     fig, axes = plt.subplots(3, 1, figsize=(12, 10))
@@ -117,7 +110,6 @@ def create_spectrograms(original, robot_signals, Fs):
     plt.tight_layout()
     plt.savefig('robot_output/spectrogram_order_comparison.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print("  ✓ Saved: robot_output/spectrogram_order_comparison.png")
     
     # 3. Pitch Period Comparison
     fig, axes = plt.subplots(3, 1, figsize=(12, 10))
@@ -136,28 +128,15 @@ def create_spectrograms(original, robot_signals, Fs):
     plt.tight_layout()
     plt.savefig('robot_output/spectrogram_pitch_comparison.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print("  ✓ Saved: robot_output/spectrogram_pitch_comparison.png")
 
 
 if __name__ == "__main__":
     import os
     
-    # Load speech
     Fs, sig = wavfile.read('speechsample.wav')
     sig = sig / np.max(np.abs(sig))
-    
-    print("Robotic Voice Generation using LPC")
-    print("=" * 70)
-    print(f"Input: speechsample.wav ({len(sig)/Fs:.2f}s, {Fs}Hz)")
-    print()
-    
-    # Create output directory
+  
     os.makedirs("robot_output", exist_ok=True)
-    
-    # Define configurations: (lpc_order, pitch_period, filename, description)
-    # Pitch period: controls the robot voice pitch
-    # - Smaller period (40-60 samples) = higher pitch
-    # - Larger period (80-120 samples) = lower pitch
     
     configs = [
         (12, 80, "robot_output/robot_order12_pitch80.wav", "Order 12, Pitch period 80 samples", 'order12'),
@@ -167,71 +146,16 @@ if __name__ == "__main__":
         (24, 120, "robot_output/robot_order24_pitch120.wav", "Order 24, Pitch period 120 samples (lower pitch)", 'pitch120'),
     ]
     
-    # Store robot signals for spectrogram generation
     robot_signals = {}
     
-    # Process each configuration
     for order, pitch, filename, description, key in configs:
-        print(f"Processing: {description}")
         robot_voice = lpc_robot_voice(sig, Fs, order, pitch)
         robot_signals[key] = robot_voice
         if key == 'baseline':
             robot_signals['order24'] = robot_voice
             robot_signals['pitch80'] = robot_voice
         wavfile.write(filename, Fs, np.int16(robot_voice * 32767))
-        print(f"  → Saved: {filename}")
-        print(f"     LPC order: {order}, Pitch: {pitch} samples ({Fs/pitch:.1f} Hz)")
-        print()
     
     print("=" * 70)
-    print("Complete! Generated 5 robotic voice files.")
-    print()
-    print("OBSERVATIONS:")
-    print("-" * 70)
-    print()
-    print("Effect of LPC Order:")
-    print("  • Order 12 (lower): Less spectral detail, more 'buzzy' robotic sound")
-    print("  • Order 24 (baseline): Good balance of formant preservation")
-    print("  • Order 36 (higher): More natural formants, less robotic effect")
-    print()
-    print("Effect of Pitch Period:")
-    print("  • 50 samples (~320 Hz): Higher pitched robot voice")
-    print("  • 80 samples (~200 Hz): Medium pitched robot voice")
-    print("  • 120 samples (~133 Hz): Lower pitched robot voice")
-    print()
-    print("DESIGN CHOICES:")
-    print("-" * 70)
-    print()
-    print("1. Pitch Period Selection:")
-    print("   - Used 80 samples as baseline (~200 Hz at 16kHz)")
-    print("   - This gives a neutral robotic pitch similar to classic robot voices")
-    print("   - Tested 50 (high) and 120 (low) for comparison")
-    print()
-    print("2. Pulse Train Construction:")
-    print("   - Used single-sample impulses spaced by pitch_period")
-    print("   - Alternative: could use k=2-4 consecutive ones, but single impulses")
-    print("     produce clearer robotic effect with sharper harmonics")
-    print()
-    print("3. LPC Order Comparison:")
-    print("   - Order 12: Insufficient for capturing all formants → more robotic")
-    print("   - Order 24: Standard order (Fs/1000 + ~16) → balanced")
-    print("   - Order 36: Higher order → captures more detail, less robotic")
-    print()
-    print("4. Energy Normalization:")
-    print("   - Maintained to ensure consistent loudness across frames")
-    print("   - Important because artificial excitation has different energy than natural")
-    print()
-    print("Key Insight:")
-    print("  The robotic effect comes from replacing the natural pitch variation")
-    print("  with a constant periodic excitation. The LPC filter preserves formant")
-    print("  structure (vowel quality) while the periodic excitation removes natural")
-    print("  prosody and pitch variation, creating the characteristic robot sound.")
-    print()
-    print("=" * 70)
-    print("GENERATING SPECTROGRAMS")
-    print("-" * 70)
     create_spectrograms(sig, robot_signals, Fs)
-    print()
-    print("=" * 70)
-    print("All done! Generated 5 audio files + 3 spectrograms in robot_output/")
 

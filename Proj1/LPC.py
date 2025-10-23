@@ -72,58 +72,6 @@ def lpc_as_toyou(sig, Fs):
 
     return out
 
-# def my_levinson(r, order):
-#     """
-#     Lecture 4, Slide 33
-
-#     INPUT:
-#         r: autocorrelation sequence (numpy array), length >= order+1
-#            r[0] is the zero-lag autocorrelation
-#         order: order of the LPC filter (integer)
-    
-#     OUTPUT:
-#         a: LPC coefficients (numpy array of length order+1)
-#            a[0] = 1.0 (by convention for the all-pole filter)
-#            a[1:] are the predictor coefficients
-#     """
-#     # Initial step: l₀⁰ = 0, E⁰ = r[0]
-#     # l[i, j] represents l_j^i (j-th coefficient at iteration i)
-#     l = np.zeros((order + 1, order + 1))
-    
-#     # E[i] represents E^i (minimum squared prediction error at iteration i)
-#     E = np.zeros(order + 1)
-#     E[0] = r[0]
-    
-#     # Iterate through orders i = 1, 2, ..., p
-#     for i in range(1, order + 1):
-#         # Step 1: Compute the partial correlation coefficient (reflection coefficient)
-#         # kᵢ = (r[i] - Σⱼ₌₁ⁱ⁻¹ lⱼⁱ⁻¹ r[i-j]) / Eⁱ⁻¹
-#         numerator = r[i]
-#         for j in range(1, i):
-#             numerator -= l[i-1, j] * r[i - j]
-#         k_i = numerator / E[i-1]
-        
-#         # Step 2: Update prediction coefficients
-#         # lᵢⁱ = kᵢ
-#         l[i, i] = k_i
-        
-#         # lⱼⁱ = lⱼⁱ⁻¹ - kᵢ lᵢ₋ⱼⁱ⁻¹, for 1 ≤ j ≤ i-1
-#         for j in range(1, i):
-#             l[i, j] = l[i-1, j] - k_i * l[i-1, i-j]
-        
-#         # Step 3: Update the minimum squared prediction error
-#         # Eⁱ = (1 - kᵢ²) Eⁱ⁻¹
-#         E[i] = (1 - k_i**2) * E[i-1]
-    
-#     # Final Step: Return optimal predictor coefficients as [1, -l₁*, -l₂*, ..., -lₚ*]
-#     # The negative sign is for the IIR filter representation H(z) = 1/A(z)
-#     # lⱼ* = lⱼᵖ for 1 ≤ j ≤ p
-#     a = np.zeros(order + 1)
-#     a[0] = 1.0
-#     a[1:] = -l[order, 1:order + 1]
-    
-#     return a
-
 def analyze_frame(sig_frame, Fs, order, frame_num, frame_type):
     """Compare LPC filter response with FFT of the given frame."""
     NFFT = 2048
@@ -161,7 +109,6 @@ def analyze_frame(sig_frame, Fs, order, frame_num, frame_type):
     filename = f"plots/frame{frame_num}_{frame_type}_order{order}.png"
     plt.savefig(filename, dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"    → Saved: {filename}")
 
 
 
@@ -182,17 +129,12 @@ def frame_by_frame_analysis(sig, Fs, lpc_orders=[8, 16, 24]):
     shift = frame_len // 2
     window = np.hanning(frame_len)
     
-    print(f"\nFrame length: {frame_len} samples ({frame_len_ms} ms)")
-    print(f"Frame shift: {shift} samples")
-    print(f"Sampling frequency: {Fs} Hz")
     
     # Framing
     frames = []
     for start in range(0, len(sig) - frame_len, shift):
         frame = sig[start:start + frame_len] * window
         frames.append(frame)
-    
-    print(f"Total frames: {len(frames)}")
     
     # Compute energy and zero-crossing for voiced/unvoiced classification
     energies = [np.sum(f ** 2) for f in frames]
@@ -208,34 +150,12 @@ def frame_by_frame_analysis(sig, Fs, lpc_orders=[8, 16, 24]):
     voiced_frame = frames[voiced_idx]
     unvoiced_frame = frames[unvoiced_idx]
     
-    print(f"\nSelected voiced frame: {voiced_idx}")
-    print(f"Selected unvoiced frame: {unvoiced_idx}")
-    
-    # Analyze with different LPC orders
-    print(f"\nTesting LPC orders: {lpc_orders}")
-    print(f"Will generate {len(lpc_orders) * 2} plots:")
-    for order in lpc_orders:
-        print(f"  - frame{voiced_idx}_voiced_order{order}.png")
-        print(f"  - frame{unvoiced_idx}_unvoiced_order{order}.png")
-    
-    print("\nGenerating plots...")
     print("-" * 70)
     
     for order in lpc_orders:
-        print(f"  Processing: Voiced frame {voiced_idx} - Order {order}")
         analyze_frame(voiced_frame, Fs, order, voiced_idx, 'voiced')
-        
-        print(f"  Processing: Unvoiced frame {unvoiced_idx} - Order {order}")
         analyze_frame(unvoiced_frame, Fs, order, unvoiced_idx, 'unvoiced')
     
-    print("-" * 70)
-    print("="*70)
-    print("ANALYSIS COMPLETE - Check plots/ directory")
-    print("\nGenerated files:")
-    for order in lpc_orders:
-        print(f"  ✓ plots/frame{voiced_idx}_voiced_order{order}.png")
-        print(f"  ✓ plots/frame{unvoiced_idx}_unvoiced_order{order}.png")
-    print("="*70)
 
 if __name__ == "__main__":
     import sys
@@ -270,7 +190,6 @@ if __name__ == "__main__":
         print("RUNNING AUDIO DEMO")
         print("-"*70)
         
-        print("Processing LPC analysis-synthesis...")
         out = lpc_as_toyou(sig, Fs)
 
         # Enable interactive mode for matplotlib
@@ -299,7 +218,6 @@ if __name__ == "__main__":
         plt.draw()  # Draw the figure
         plt.pause(1)  # Give more time for window to fully render
         
-        # Now play audio while figure is visible (in same order as plots)
         print("\n1. Playing ORIGINAL signal (top plot)...")
         sd.play(sig, Fs)
         sd.wait()
@@ -310,7 +228,6 @@ if __name__ == "__main__":
         
         print("\nPlayback complete!")
         if choice == '1':
-            print("Close the figure window to exit.")
             plt.show()
         else:
             plt.close('all')
@@ -319,11 +236,9 @@ if __name__ == "__main__":
         if choice == '3':
             print("\n" + "-"*70)
         
-        # Ask for LPC orders to test
         print("\nEnter LPC orders to test (comma-separated)")
         print("Example: 8,16,24,32,40")
         
-        # Check for command-line argument for orders
         if len(sys.argv) > 2:
             orders_input = sys.argv[2]
             print(f"Orders: {orders_input}")
@@ -344,6 +259,3 @@ if __name__ == "__main__":
         # Run frame-by-frame analysis
         frame_by_frame_analysis(sig, Fs, lpc_orders)
         
-    print("\n" + "="*70)
-    print("DONE!")
-    print("="*70)

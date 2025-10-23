@@ -27,7 +27,7 @@ def lpc_as_toyou(sig, Fs):
     """
 
     Horizon = 30  # 30ms - window length
-    OrderLPC = 24  # order of LPC
+    OrderLPC = 68  # order of LPC
     Buffer = 0  # initialization
     out = np.zeros_like(sig)  # initialization
 

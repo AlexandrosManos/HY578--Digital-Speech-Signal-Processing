@@ -109,7 +109,7 @@ def SinM_peakPicking(S, L) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     PH = np.array([], dtype=float)
 
     mag = np.abs(S)
-    peaks = find_peaks(mag)
+    peaks, _ = find_peaks(mag)
     if len(peaks) == 0:
         return F, AMP, PH
 
@@ -122,7 +122,7 @@ def SinM_peakPicking(S, L) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     F = peaks[idx]
     AMP = mag[F]
-    PH = np.angle(S[F]) #unwrap maybe
+    PH = np.angle(S[F])
 
     return F, AMP, PH
 
@@ -189,7 +189,7 @@ def SinM_synthesis_PI(SinM: List[SinMFrame], N, S, Fs, X):
 def SinM_synthesis_sin_PI(N, Fs, AMP_1, AMP_2, PH_1, PH_2, F_1, F_2):
     """
     Yf = SinM_synthesis_sin_PI(N, Fs, AMP_1, AMP_2, PH_1, PH_2, F_1, F_2)
-    SinM synthesis by sinusoidal Parameter Interploation.
+    SinM synthesis by sinusoidal Parameter Interpolation with McAulay-Quatieri phase unwrapping.
     Synthesizes N samples of the speech signal from the SinM parameters.
     """
     Yf = np.zeros(N)
@@ -199,23 +199,39 @@ def SinM_synthesis_sin_PI(N, Fs, AMP_1, AMP_2, PH_1, PH_2, F_1, F_2):
 
     t = np.arange(N, dtype=float)
     for l in range(L):
-        # Linear amplitude interpolation, Lecture 5  slide 36
-        a_t = AMP_1[l] + (AMP_2[l] - AMP_1[l]) * t / N
-        
-        # Cubic phase interpolation (McAulay-Quatieri)
-        # φ(t) = a + bt + ct² + dt³
-        # Boundary conditions: φ(0)=θ₁, φ(N)=θ₂, φ'(0)=ω₁, φ'(N)=ω₂
+        # Linear amplitude interpolation, Lecture 5 slide 36
+        a_t = AMP_1[l] + ((AMP_2[l] - AMP_1[l]) * t) / N
+
+        # Cubic phase interpolation with cycle correction (McAulay-Quatieri)
         w1 = 2 * np.pi * F_1[l] / Fs
         w2 = 2 * np.pi * F_2[l] / Fs
-        z = PH_1[l] # initial phase
-        c = w1
-        a = (3*(PH_2[l] - PH_1[l]) - N*(2*w1 + w2)) / (N**2)
-        b = (2*(PH_1[l] - PH_2[l]) + N*(w1 + w2)) / (N**3) 
-        phase_t = z + c*t + a*t**2 + b*t**3
         
-        # Synthesize
-        Yf += a_t * np.cos(phase_t)
-			
+        # Compute cycle correction factor M (Equation 36)
+        xw = (1 / (2*np.pi)) * ((PH_1[l] + w1 * N - PH_2[l]) + (w2 - w1) * N / 2)
+        M = np.round(xw)
+
+        # Solve for cubic coefficients (Equation 34, 37)
+        A = np.array([
+            [3 / N**2, -1 / N],
+            [-2 / N**3, 1 / N**2]
+        ])
+
+        B = np.array([
+            PH_2[l] - PH_1[l] - w1 * N + 2 * np.pi * M,
+            w2 - w1
+        ])
+
+        sol = A @ B  # matrix multiplication
+        a = sol[0]
+        b = sol[1]
+
+        theta = PH_1[l] + w1 * t + a * (t**2) + b * (t**3)
+
+        # Synthesize with factor of 2 for proper amplitude
+        x = 2 * a_t * np.cos(theta)
+
+        Yf += x
+
     return Yf
 
 
@@ -256,9 +272,6 @@ def SinM_FrameToFramePeakMatching(SinM_prev: SinMFrame, SinM_curr: SinMFrame, S,
         if closest_prev == n:
             I_1[n] = j
             I_2[j] = n
-
-    # print(I_1) to delete --> de ta diavazw ena ena
-    # print(I_2)
 
     # Check for no matched frequencies
     L_new = int(L_2 + np.sum(I_1 == -1))
@@ -323,7 +336,7 @@ def SinM_FrameToFramePeakMatching(SinM_prev: SinMFrame, SinM_curr: SinMFrame, S,
 
 
 if __name__ == "__main__":
-    fs, s = wavfile.read('arctic_bdl1_snd_norm.wav')
+    fs, s = wavfile.read('oPapas.wav')
 
     # normalize if integer PCM
     if s.dtype.kind in 'iu':

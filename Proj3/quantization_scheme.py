@@ -16,9 +16,8 @@ tempRoot = os.path.join(Dir, "TIMIT")
 dataSet = os.path.join(tempRoot, "train")
 
 
-Size = 512 # 64
-# The proper format to save the codebook??????
-OUTPUT_FILE = f"lpc_codebook_{Size}.npy"
+CODEBOOK_SIZES = [64, 512, 2056]
+# Each trained codebook will be saved as lpc_codebook_{size}.npy in the project directory
 
 
 
@@ -93,18 +92,20 @@ if __name__ == "__main__":
 
     training_data = np.vstack(all_features)
 
-    try:
-        codebook = lbg_vq(
-            training_data,
-            codebook_size=Size,
-            epsilon=0.01,
-            max_iter=50,
-            tol=1e-4
-        )
-    except Exception as e:
-        print(f"Error during LBG-VQ training: {e}")
-        sys.exit(1)
+    for size in CODEBOOK_SIZES:
+        print(f"\nTraining {size}-codeword codebook...")
+        try:
+            codebook = lbg_vq(
+                training_data,
+                codebook_size=size,
+                epsilon=0.01,
+                max_iter=50,
+                tol=1e-4
+            )
+        except Exception as e:
+            print(f"Error during LBG-VQ training for size {size}: {e}")
+            sys.exit(1)
 
-    output_path = os.path.join(Dir, OUTPUT_FILE)
-    np.save(output_path, codebook)
-    print(f"Codebook successfully saved to: {output_path}")
+        output_path = os.path.join(Dir, f"lpc_codebook_{size}.npy")
+        np.save(output_path, codebook)
+        print(f"Codebook successfully saved to: {output_path}")

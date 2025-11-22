@@ -97,8 +97,10 @@ def analyze_quantize_synthesize(input_wav, output_wav, codebook_path, order=24, 
             continue
     
     # Normalize and save output
+    original_peak = np.max(np.abs(sig))
     if np.max(np.abs(out_sig)) > 0:
-        out_sig = out_sig / np.max(np.abs(out_sig)) * 0.9
+        scale = original_peak if original_peak > 0 else 1.0
+        out_sig = out_sig / np.max(np.abs(out_sig)) * scale
     wavfile.write(output_wav, Fs, out_sig.astype(np.float32))
     
     return out_sig

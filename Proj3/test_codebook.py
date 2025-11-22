@@ -1,127 +1,119 @@
 import os
-import glob
-import sys
-
 import numpy as np
 from scipy.io import wavfile
 from scipy.signal import lfilter
+import sounddevice as sd
 from my_levinson import my_levinson
 from lpc_transforms import lpc_to_companded, companded_to_lpc
 from lbg_vq import vq_encode, vq_decode
 
-
-try:
-    Dir = os.path.dirname(os.path.abspath(__file__))
-except NameError:
-    Dir = os.path.abspath('.')
-
-tempRoot = os.path.join(Dir, "TIMIT")
-dataSet = os.path.join(tempRoot, "test")
-output_dir = os.path.join(Dir, "my_test")
+Dir = os.path.dirname(os.path.abspath(__file__))
 
 def lpc_vq_synthesis(Fs, sig, codebook):
+    """LPC analysis with vector quantization and synthesis."""
     OrderLPC = 24
-    Horizon = 30
-    Horizon = int(Horizon * Fs / 1000)
+    Horizon = int(30 * Fs / 1000)  # 30ms frames
     Shift = Horizon // 2
     Win = np.hanning(Horizon)
-
-    Lsig = len(sig)
-    slice_start = 0
-    tosave_start = 0
-    Nfr = int(np.floor((Lsig - Horizon) / Shift) + 1)
-
+    
+    Nfr = int(np.floor((len(sig) - Horizon) / Shift) + 1)
     out = np.zeros_like(sig)
     buffer = np.zeros(Horizon - Shift)
-
+    
     for l in range(Nfr):
-        slice_end = slice_start + Horizon
-        tosave_end = slice_start + Shift
-
-        sigLPC = Win * sig[slice_start:slice_end]
-
+        start = l * Shift
+        sigLPC = Win * sig[start:start + Horizon]
+        
         if np.sum(np.abs(sigLPC)) < 1e-5:
-            out[tosave_start:tosave_end] = buffer
+            out[start:start + Shift] = buffer
             buffer = np.zeros(Shift)
-            slice_start += Shift
-            tosave_start += Shift
             continue
-
+        
         try:
-            r = np.correlate(sigLPC, sigLPC, mode='full')
-            r = r[len(sigLPC) - 1:]
+            # LPC analysis with ORIGINAL coefficients
+            r = np.correlate(sigLPC, sigLPC, mode='full')[len(sigLPC)-1:]
             a = my_levinson(r, OrderLPC)
-
-            orignal = np.sqrt(np.sum(a * r[:len(a)]))
-
-            ex_original = lfilter(a, [1], sigLPC)
-
+            
+            # Gain from ORIGINAL LPC
+            gain = np.sqrt(np.sum(a * r[:len(a)]))
+            
+            # Excitation from ORIGINAL LPC
+            ex = lfilter(a, [1], sigLPC)
+            
+            # Vector quantize reflection coefficients
             g = lpc_to_companded(a)
             labels, _ = vq_encode(g.reshape(1, -1), codebook)
-            g_quantized = vq_decode(labels, codebook)[0]
-
-            a_quantized = companded_to_lpc(g_quantized)
-
-            s = lfilter([orignal], a_quantized, ex_original)
-
+            g_quant = vq_decode(labels, codebook)[0]
+            a_quant = companded_to_lpc(g_quant)
+            
+            # Synthesis with ORIGINAL excitation and gain
+            s = lfilter([gain], a_quant, ex)
             s[:Shift] += buffer
-            out[tosave_start:tosave_end] = s[:Shift]
+            out[start:start + Shift] = s[:Shift]
             buffer = s[Shift:Horizon]
-
+            
         except (ValueError, np.linalg.LinAlgError):
-            out[tosave_start:tosave_end] = buffer
+            out[start:start + Shift] = buffer
             buffer = np.zeros(Shift)
-
-        slice_start += Shift
-        tosave_start += Shift
-
+    
     return out
 
 
 if __name__ == "__main__":
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    if not os.path.exists(dataSet):
-        print(f"Directory not found: {dataSet}")
-        sys.exit(1)
-
-    test_files = glob.glob(os.path.join(dataSet, "**/*.wav"), recursive=True)
-
+    # Configuration
+    codebook_sizes = [64, 512]  # Test different codebook sizes
+    
+    # Get first male and female test files from TIMIT
+    test_dir = os.path.join(Dir, "TIMIT", "test")
+    male_files = [f for f in os.listdir(test_dir) if f.startswith('m')][:1]
+    female_files = [f for f in os.listdir(test_dir) if f.startswith('f')][:1]
+    
+    test_files = []
+    for speaker in male_files + female_files:
+        speaker_dir = os.path.join(test_dir, speaker)
+        wav_files = [f for f in os.listdir(speaker_dir) if f.endswith('.wav')][:1]
+        if wav_files:
+            test_files.append(os.path.join(speaker_dir, wav_files[0]))
+    
     if not test_files:
-        print(f"No .wav files found in {dataSet}.")
-        sys.exit(1)
-
-    codebook_sizes = [64, 512]
-
-    for size in codebook_sizes:
-
-        size_output_dir = os.path.join(output_dir, f"size_{size}")
-        if not os.path.exists(size_output_dir):
-            os.makedirs(size_output_dir)
-            print(f"Created output directory: {size_output_dir}")
-
-
-        codebook_file = f"lpc_codebook_{size}.npy"
-        if not os.path.exists(codebook_file):
-            print(f"Codebook file {codebook_file} not found")
-            continue
-
-        codebook = np.load(codebook_file)
-
-        for i, filepath in enumerate(test_files):
-            if i % 5 == 0:
-                print(f" Processing file {i + 1}/{len(test_files)} with size {size}: {os.path.basename(filepath)}")
-
-            Fs, sig = wavfile.read(filepath)
-            sig = sig.astype(float)
-            sig /= np.max(np.abs(sig))
-            synthesized = lpc_vq_synthesis(Fs, sig, codebook)
-
-            out_norm = synthesized / (np.max(np.abs(synthesized)) + 1e-9)
-            out_int16 = (out_norm * 32767).astype(np.int16)
-
-            output_file = os.path.join(size_output_dir, f"synth_size{size}_{os.path.basename(filepath)}")
-            # wavfile.write(output_file, Fs, synthesized.astype(np.float32))
-            wavfile.write(output_file, Fs, out_int16)
+        print("No test files found in TIMIT/test")
+        exit(1)
+    
+    # Process each test file
+    for test_file in test_files:
+        print(f"\n{'='*50}")
+        print(f"File: {os.path.basename(test_file)}")
+        print('='*50)
+        
+        # Load audio
+        Fs, sig = wavfile.read(test_file)
+        sig = sig.astype(float) / np.max(np.abs(sig))
+        
+        # Play original
+        print("Playing ORIGINAL...")
+        sd.play(sig, Fs)
+        sd.wait()
+        
+        # Test each codebook size
+        for size in codebook_sizes:
+            codebook_path = os.path.join(Dir, f"lpc_codebook_{size}.npy")
+            if not os.path.exists(codebook_path):
+                print(f"Codebook {size} not found")
+                continue
+            
+            print(f"\nCodebook size: {size}")
+            codebook = np.load(codebook_path)
+            
+            # Synthesize
+            synth = lpc_vq_synthesis(Fs, sig, codebook)
+            synth = synth / (np.max(np.abs(synth)) + 1e-9)
+            
+            # Save
+            output_path = os.path.join(Dir, f"output_{size}_{os.path.basename(test_file)}")
+            wavfile.write(output_path, Fs, (synth * 32767).astype(np.int16))
+            print(f"Saved: {output_path}")
+            
+            # Play synthesized
+            print(f"Playing SYNTHESIZED ({size})...")
+            sd.play(synth, Fs)
+            sd.wait()

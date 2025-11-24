@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 # Resolve directories
 PROJ3_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(PROJ3_DIR)
+
 
 # Add Proj3 directory to import path for local modules
 if PROJ3_DIR not in sys.path:
@@ -20,6 +20,7 @@ if PROJ3_DIR not in sys.path:
 from my_levinson import my_levinson
 from lpc_transforms import lpc_to_companded, companded_to_lpc
 from lbg_vq import vq_encode, vq_decode
+from scalar_quantizer import uniform_scalar_quantize
 
 def analyze_frame(sig_frame, order=24):
     # Apply window
@@ -39,10 +40,14 @@ def analyze_frame(sig_frame, order=24):
         # Calculate excitation
         e = lfilter(a, [1], frame)
         
+        # Calculate Gain (RMS of excitation)
+        G = np.sqrt(np.mean(e**2))
+        if G == 0: G = 1e-9
+        
         # Convert to companded reflection coefficients
         g = lpc_to_companded(a)
         
-        return g, e, a
+        return g, e, a, G
         
     except (np.linalg.LinAlgError, ValueError) as e:
         print(f"Error in LPC analysis: {e}")
@@ -64,6 +69,13 @@ def analyze_quantize_synthesize(input_wav, output_wav, codebook_path, order=24, 
     
     # Initialize output signal
     out_sig = np.zeros_like(sig)
+
+    # Gain quantization parameters
+    gain_bits = 6
+    gain_min = 1e-3  # keep the floor strictly positive
+    gain_max = 10.0
+    log_gain_min = np.log(gain_min)
+    log_gain_max = np.log(gain_max)
     
     # Process each frame
     for i in tqdm(range(num_frames), desc=f"Processing {os.path.basename(codebook_path)}"):
@@ -72,7 +84,7 @@ def analyze_quantize_synthesize(input_wav, output_wav, codebook_path, order=24, 
         frame = sig[start:end]
         
         # Analyze frame
-        g_companded, e, a = analyze_frame(frame, order)
+        g_companded, e, a, G = analyze_frame(frame, order)
         if g_companded is None:
             continue
         
@@ -86,7 +98,19 @@ def analyze_quantize_synthesize(input_wav, output_wav, codebook_path, order=24, 
             
             # Synthesis
             if e is not None and a_quantized is not None:
-                synth_frame = lfilter([1], a_quantized, e)
+                # Using a fixed range for log-domain quantization to preserve small gains.
+                log_G = np.log(np.clip(G, gain_min, gain_max))
+                q_log_G, _, _ = uniform_scalar_quantize(log_G, gain_bits, log_gain_min, log_gain_max)
+                q_G = np.exp(q_log_G)
+
+                # Normalize residual by original Gain and scale by Quantized Gain
+                # PROJECT REQUIREMENT: The following line performs energy normalization.
+                # The residual 'e' has energy related to the prediction error.
+                # We normalize it by 'G' (sqrt of error energy) to get unit variance,
+                # then scale by the quantized gain 'q_G'.
+                e_hat = (e / G) * q_G
+                
+                synth_frame = lfilter([1], a_quantized, e_hat)
                 
                 # Apply window and overlap-add
                 window = np.hanning(frame_size)
@@ -165,7 +189,8 @@ def process_test_files(codebook_path, output_dir="test_results"):
 
 def main():
     # Input file (using available speech sample)
-    input_file = os.path.join(ROOT_DIR, "Proj1", "speechsample.wav")
+    input_file = os.path.join(PROJ3_DIR, "oPapas.wav")
+    print(f"Processing input file: {input_file}")
 
     # Output files
     output_64 = os.path.join(PROJ3_DIR, "synthesized_64.wav")

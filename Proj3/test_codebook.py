@@ -61,7 +61,7 @@ def lpc_vq_synthesis(Fs, sig, codebook):
 
 if __name__ == "__main__":
     # Configuration
-    codebook_sizes = [64, 512]  # Test different codebook sizes
+    codebook_sizes = [64, 512, 2056]  # Test different codebook sizes
     
     # Get first male and female test files from TIMIT
     test_dir = os.path.join(Dir, "TIMIT", "test")

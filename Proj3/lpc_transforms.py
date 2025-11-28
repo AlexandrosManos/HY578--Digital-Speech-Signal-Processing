@@ -1,9 +1,3 @@
-# Utility functions for LPC coefficient domain conversions.
-#
-# This module provides helpers for converting between standard LPC predictor
-# coefficients, reflection coefficients, and their logarithmically companded
-# variants. The transforms follow the step-up and step-down recursions that
-# underpin Levinson-Durbin style algorithms.
 
 import numpy as np
 
@@ -12,9 +6,7 @@ import numpy as np
 def _as_float_array(values):
     return np.asarray(list(values), dtype=np.float64)
 
-
-
-# Convert LPC predictor coefficients ``a`` to reflection coefficients ``k``.
+# Convert LPC predictor coefficients a to reflection coefficients k.
 def lpc_to_reflection(a_coeffs):
 
     a = _as_float_array(a_coeffs)
@@ -53,7 +45,7 @@ def lpc_to_reflection(a_coeffs):
 
 
 def reflection_to_lpc(reflection_coeffs):
-    # Convert reflection coefficients ``k`` back to LPC predictor coefficients.
+    # Convert reflection coefficients k back to LPC predictor coefficients.
     k = _as_float_array(reflection_coeffs)
     if k.ndim != 1:
         raise ValueError("Reflection coefficients must be a one-dimensional sequence")
@@ -75,7 +67,7 @@ def reflection_to_lpc(reflection_coeffs):
     return a
 
 
-# Apply logarithmic companding to reflection coefficients ``k``.
+# Apply logarithmic companding to reflection coefficients   k.
 def reflection_to_companded(reflection_coeffs):
 
     k = _as_float_array(reflection_coeffs)
@@ -85,7 +77,7 @@ def reflection_to_companded(reflection_coeffs):
     return np.log((1.0 - k) / (1.0 + k))
 
 
-# Invert the companding transform returning reflection coefficients ``k``.
+# Invert the companding transform returning reflection coefficients k.
 def companded_to_reflection(companded_coeffs):
 
     g = _as_float_array(companded_coeffs)
@@ -96,14 +88,14 @@ def companded_to_reflection(companded_coeffs):
     return (1.0 - exp_g) / (1.0 + exp_g)
 
 
-# Convenience wrapper: LPC ``a`` -> companded reflection coefficients ``g``.
+# Convenience wrapper: LPC a -> companded reflection coefficients g.
 def lpc_to_companded(a_coeffs):
 
     k = lpc_to_reflection(a_coeffs)
     return reflection_to_companded(k)
 
 
-# Convenience wrapper: companded reflection coefficients ``g`` -> LPC ``a``.
+# Convenience wrapper: companded reflection coefficients g -> LPC a.
 def companded_to_lpc(companded_coeffs):
 
     k = companded_to_reflection(companded_coeffs)

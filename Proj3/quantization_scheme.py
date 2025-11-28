@@ -20,7 +20,6 @@ CODEBOOK_SIZES = [64, 512, 2056]
 # Each trained codebook will be saved as lpc_codebook_{size}.npy in the project directory
 
 
-
 def features(filepath):
     OrderLPC = 24
     Horizon = 30

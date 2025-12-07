@@ -7,8 +7,10 @@ from sklearn.mixture import GaussianMixture
 from feature_extraction import extract_and_save_mfcc
 
 # Configuration
-TIMIT_TRAIN_DIR = "/Users/pswmi64/Desktop/my-projects/hy578/HY578--Digital-Speech-Signal-Processing/Proj4/TIMIT/train"
-TIMIT_TEST_DIR = "/Users/pswmi64/Desktop/my-projects/hy578/HY578--Digital-Speech-Signal-Processing/Proj4/TIMIT/test"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+TIMIT_TRAIN_DIR = os.path.join(BASE_DIR, "TIMIT", "train")
+TIMIT_TEST_DIR = os.path.join(BASE_DIR, "TIMIT", "test")
 
 # Experiment Settings
 CONFIGS = [

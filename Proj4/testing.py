@@ -63,6 +63,10 @@ def test_identification_system():
 
             if predicted_speaker == true_speaker_id:
                 correct_identifications += 1
+            if true_speaker_id == "alex":
+                isCorr = predicted_speaker == 'alex'
+                print(
+                    f"Testing ALEX: Predicted -> {predicted_speaker} [{isCorr}]")
 
             total_tests += 1
 

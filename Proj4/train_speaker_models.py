@@ -8,7 +8,8 @@ from feature_extraction import extract_and_save_mfcc
 
 # Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TIMIT_TRAIN_DIR = os.path.join(BASE_DIR, "TIMIT", "test")
+TIMIT_TRAIN_DIR = os.path.join(BASE_DIR, "TIMIT", "train")
+TIMIT_TEST_DIR = os.path.join(BASE_DIR, "TIMIT", "test")
 FEATURES_DIR = "speaker_features"
 MODELS_DIR = "speaker_models"
 N_COMPONENTS = 16  # Number of Gaussians
@@ -57,8 +58,9 @@ def process_all_speakers():
     os.makedirs(FEATURES_DIR, exist_ok=True)
     os.makedirs(MODELS_DIR, exist_ok=True)
     
-    # Get list of speakers
-    speakers = [d for d in os.listdir(TIMIT_TRAIN_DIR) if os.path.isdir(os.path.join(TIMIT_TRAIN_DIR, d))]
+    # Get list of speakers from the TEST directory (to match the experiment scope)
+    # We want to train models for everyone we plan to test.
+    speakers = [d for d in os.listdir(TIMIT_TEST_DIR) if os.path.isdir(os.path.join(TIMIT_TEST_DIR, d))]
     print(f"Found {len(speakers)} speakers.")
     
     for speaker_id in speakers:

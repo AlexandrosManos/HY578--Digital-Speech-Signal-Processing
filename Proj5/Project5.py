@@ -1,6 +1,9 @@
 # pip install soundfile sounddevice numpy
 import numpy as np
 import soundfile as sf
+import matplotlib
+matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
 
 try:
     import sounddevice as sd   # optional (for playback)
@@ -201,20 +204,8 @@ SNR_DB  = 10  # target global SNR in dB
 # --- Read (soundfile returns float in [-1, 1] when possible) ---
 s, fs = sf.read(in_wav, always_2d=False)  # shape: (N,) or (N, C)
 
-# --- (Optional) Listen to the clean audio ---
-if HAVE_SD:
-    print("Playing clean audio...")
-    sd.play(s, fs)
-    sd.wait()
-
 # --- Add white Gaussian noise at target SNR ---
 sn = add_noise_at_snr(s, SNR_DB)
-
-# --- (Optional) Listen to the noisy audio ---
-if HAVE_SD:
-    print("Playing noisy audio...")
-    sd.play(sn, fs)
-    sd.wait()
 
 # --- Normalize and save as 16-bit PCM ---
 sn_norm = normalize_for_wav(sn, margin=1.1)
@@ -232,22 +223,96 @@ sf.write(out_ss_filename, enhanced_norm, fs, subtype="PCM_16")
 
 print(f"Saved enhanced file to: {out_ss_filename}")
 print()
-if HAVE_SD:
-    print("Playing enhanced spectral subtraction audio...")
-    sd.play(enhanced_norm, fs)
-    sd.wait()
 
 # 2) Wiener filtering
 
-enhanced_wiener = wiener_filter_enhancement(sn_norm, fs)
+enhanced_wiener = wiener_filter_enhancement(sn_norm, fs, 0.5)
 enhanced_wiener_norm = normalize_for_wav(enhanced_wiener)
 out_wiener_filename = "enhanced_wiener.wav"
 
 sf.write(out_wiener_filename, enhanced_wiener_norm, fs, subtype="PCM_16")
 print(f"Saved enhanced file to: {out_wiener_filename}")
 
+# --- Plot signals ---
+
+# FIGURE 1: Baseline Comparison (Clean vs Noisy)
+plt.figure(figsize=(10, 6))
+# Original Clean Signal
+plt.subplot(2, 1, 1)
+plt.plot(s)
+plt.title('Original Clean Signal')
+plt.grid(True)
+
+# Noisy Signal
+plt.subplot(2, 1, 2)
+plt.plot(sn_norm)
+plt.title(f'Noisy Signal ({SNR_DB}dB SNR)')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+# FIGURE 2: Spectral Subtraction Evaluation
+plt.figure(figsize=(10, 8))
+# Original Clean Signal
+plt.subplot(3, 1, 1)
+plt.plot(s)
+plt.title('Original Clean Signal')
+plt.grid(True)
+
+# Noisy Signal
+plt.subplot(3, 1, 2)
+plt.plot(sn_norm)
+plt.title(f'Noisy Signal ({SNR_DB}dB SNR)')
+plt.grid(True)
+
+# Enhanced: Spectral Subtraction
+plt.subplot(3, 1, 3)
+plt.plot(enhanced_norm)
+plt.title('Enhanced: Spectral Subtraction')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+
+# FIGURE 3: Wiener Filter Evaluation
+plt.figure(figsize=(10, 8))
+# Original Clean Signal
+plt.subplot(3, 1, 1)
+plt.plot(s)
+plt.title('Original Clean Signal')
+plt.grid(True)
+
+# Noisy Signal
+plt.subplot(3, 1, 2)
+plt.plot(sn_norm)
+plt.title(f'Noisy Signal ({SNR_DB}dB SNR)')
+plt.grid(True)
+
+# Enhanced: Wiener Filter
+plt.subplot(3, 1, 3)
+plt.plot(enhanced_wiener_norm)
+plt.title('Enhanced: Wiener Filter')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
 # --- (Optional) Listen to the noisy audio ---
 if HAVE_SD:
+    print("Playing clean audio...")
+    sd.play(s, fs)
+    sd.wait()
+
+    print("Playing noisy audio...")
+    sd.play(sn, fs)
+    sd.wait()
+
+    print("Playing enhanced spectral subtraction audio...")
+    sd.play(enhanced_norm, fs)
+    sd.wait()
+
     print("Playing enhanced Wiener audio...")
     sd.play(enhanced_wiener_norm, fs)
     sd.wait()

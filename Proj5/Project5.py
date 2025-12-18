@@ -122,6 +122,77 @@ def spectral_subtraction(sig, fs):
 
     return out
 
+
+# -------- Wiener filter ---------
+def wiener_filter_enhancement(sig, fs, t=0.9): # flag --> gia t (?)
+
+    noise = spectra_power(sig[:1000], fs)
+
+    Horizon = 30  # 30ms - window length
+    Horizon = int(Horizon * fs / 1000)
+
+    Shift = int(Horizon / 2) # frame size - step size
+    Win = np.hanning(Horizon) # analysis window
+
+    Lsig = len(sig)
+    Nfr = int(np.floor((Lsig - Horizon) / Shift) + 1) # number of frames
+
+    out = np.zeros_like(sig)
+    Buffer = np.zeros(Shift)
+
+    slice_start = 0
+    tosave_start = 0
+
+    s_init = Win * sig[0:Horizon]
+    fft = np.fft.fft(s_init)
+    Sx = np.maximum(np.abs(fft) ** 2 - noise, 0)
+
+    H = Sx / (Sx + noise)
+
+    for l in range(Nfr):
+        slice_end = slice_start + Horizon
+        tosave_end = tosave_start + Shift
+
+        if slice_end > Lsig:
+            break
+
+        # Windowing
+        s = Win * sig[slice_start:slice_end]
+
+        # FFT Analysis
+        fft = np.fft.fft(s) # flag --> check the fft.fft implementation
+        sig_abs = np.abs(fft)
+        sig_angle = np.angle(fft)
+
+        # X(pL,w) = Y(pL,w) * Hw((p-1)L,w)
+        X_freq = fft * H
+
+        subtr = sig_abs ** 2 - noise # |X(w)|^2 = |Y(w)|^2 - Sb (Sb = E[|B(w)|^2])
+        subtr = np.maximum(subtr, 0) # 0 otherwise
+
+        # Smooth power spectrum
+        # Sx(pL,w) = τSx((p-1)L,w) + (1-τ)Sx(pL,w)
+        Sx = t * Sx + (1 - t) * subtr
+
+        # Hw(pL,w) = Sx(pL,w) / (Sx(pL,w) + Sb(w))
+        H = Sx / (Sx + noise)
+
+        Csig = np.abs(X_freq) * np.exp(1j * sig_angle)
+        Csig = np.real(np.fft.ifft(Csig))
+
+
+        Csig[:Shift] = Csig[:Shift] + Buffer            # overlap-add
+        out[tosave_start:tosave_end] = Csig[:Shift]  # save the first part of the frame
+        Buffer = Csig[Shift:Horizon]                 # buffer the rest of the frame
+
+        slice_start += Shift
+        tosave_start += Shift
+
+    return out
+
+
+
+
 # --- Parameters ---
 in_wav  = "furelise-1000z.wav"
 out_wav = "furelise-1000z-noise.wav"
@@ -165,5 +236,20 @@ if HAVE_SD:
     print("Playing enhanced spectral subtraction audio...")
     sd.play(enhanced_norm, fs)
     sd.wait()
+
 # 2) Wiener filtering
+
+enhanced_wiener = wiener_filter_enhancement(sn_norm, fs)
+enhanced_wiener_norm = normalize_for_wav(enhanced_wiener)
+out_wiener_filename = "enhanced_wiener.wav"
+
+sf.write(out_wiener_filename, enhanced_wiener_norm, fs, subtype="PCM_16")
+print(f"Saved enhanced file to: {out_wiener_filename}")
+
+# --- (Optional) Listen to the noisy audio ---
+if HAVE_SD:
+    print("Playing enhanced Wiener audio...")
+    sd.play(enhanced_wiener_norm, fs)
+    sd.wait()
+
 # You can process `sn_norm` with those methods and save additional outputs.
